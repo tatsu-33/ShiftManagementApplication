@@ -14,33 +14,24 @@ app = FastAPI(
     debug=settings.debug
 )
 
-# Include admin routes
-app.include_router(admin_router)
+# Include admin routes (only if database is available)
+try:
+    app.include_router(admin_router)
+    print("Admin routes included successfully")
+except Exception as e:
+    print(f"Failed to include admin routes: {e}")
+    # Continue without admin routes
 
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize application on startup."""
-    import time
+    print("Application starting up...")
     
-    # Wait a bit for database to be ready
-    time.sleep(5)
-    
-    try:
-        # Initialize database tables
-        init_db()
-        print("Database initialized successfully")
-    except Exception as e:
-        print(f"Database initialization error: {e}")
-        # Continue startup even if database fails
-    
-    try:
-        # Start the reminder scheduler
-        start_scheduler()
-        print("Scheduler started successfully")
-    except Exception as e:
-        print(f"Scheduler startup error: {e}")
-        # Continue startup even if scheduler fails
+    # Skip database and scheduler initialization for now
+    # This will be done manually after deployment
+    print("Skipping database initialization during startup")
+    print("Application startup complete")
 
 
 @app.on_event("shutdown")

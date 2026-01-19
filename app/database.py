@@ -28,13 +28,22 @@ def get_db() -> Generator[Session, None, None]:
     Yields:
         Session: SQLAlchemy database session
     """
-    db = SessionLocal()
     try:
+        db = SessionLocal()
         yield db
+    except Exception as e:
+        print(f"Database connection error: {e}")
+        raise
     finally:
-        db.close()
+        if 'db' in locals():
+            db.close()
 
 
 def init_db() -> None:
     """Initialize database by creating all tables."""
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("Database tables created successfully")
+    except Exception as e:
+        print(f"Database initialization failed: {e}")
+        raise
