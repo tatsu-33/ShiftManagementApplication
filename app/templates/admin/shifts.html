@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シフト管理 - シフト申請管理システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 20px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .user-info {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .back-button {
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+        
+        .back-button:hover {
+            background: #5a6268;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        .controls {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .controls label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .controls select,
+        .controls input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .controls button {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .controls button:hover {
+            background: #5568d3;
+        }
+        
+        .calendar-container {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .calendar-header h2 {
+            color: #333;
+            font-size: 20px;
+        }
+        
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+        
+        .calendar-day-header {
+            text-align: center;
+            padding: 12px;
+            font-weight: 600;
+            color: #666;
+            font-size: 14px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .calendar-day {
+            min-height: 120px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .calendar-day:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+        
+        .calendar-day.empty {
+            background: #f8f9fa;
+            cursor: default;
+        }
+        
+        .calendar-day.empty:hover {
+            border-color: #e0e0e0;
+            box-shadow: none;
+        }
+        
+        .day-number {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .day-workers {
+            font-size: 12px;
+        }
+        
+        .worker-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 4px;
+            margin: 2px;
+            font-size: 11px;
+        }
+        
+        .worker-tag.ng-day {
+            background: #ffebee;
+            color: #c62828;
+            font-weight: 600;
+        }
+        
+        .ng-warning {
+            font-size: 11px;
+            color: #c62828;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-button:hover {
+            color: #333;
+        }
+        
+        .worker-list {
+            margin-bottom: 20px;
+        }
+        
+        .worker-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .worker-checkbox:hover {
+            background: #f8f9fa;
+        }
+        
+        .worker-checkbox input {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .worker-checkbox label {
+            cursor: pointer;
+            flex: 1;
+            font-size: 14px;
+        }
+        
+        .worker-checkbox.has-ng-day {
+            background: #fff3e0;
+            border-color: #ff9800;
+        }
+        
+        .ng-badge {
+            background: #ff9800;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        
+        .modal-actions button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .btn-cancel:hover {
+            background: #d0d0d0;
+        }
+        
+        .btn-save {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-save:hover {
+            background: #5568d3;
+        }
+        
+        .warning-message {
+            background: #fff3e0;
+            border: 1px solid #ff9800;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 16px;
+            color: #e65100;
+            font-size: 13px;
+        }
+        
+        .warning-message strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error-message {
+            background: #ffebee;
+            border: 1px solid #ef5350;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 16px;
+            color: #c62828;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>シフト管理</h1>
+        <div class="header-right">
+            <span class="user-info">{{ admin.name }}</span>
+            <a href="/admin/dashboard" class="back-button">ダッシュボードに戻る</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="controls">
+            <label for="year-select">年:</label>
+            <select id="year-select">
+                <!-- Populated by JavaScript -->
+            </select>
+            
+            <label for="month-select">月:</label>
+            <select id="month-select">
+                <option value="1">1月</option>
+                <option value="2">2月</option>
+                <option value="3">3月</option>
+                <option value="4">4月</option>
+                <option value="5">5月</option>
+                <option value="6">6月</option>
+                <option value="7">7月</option>
+                <option value="8">8月</option>
+                <option value="9">9月</option>
+                <option value="10">10月</option>
+                <option value="11">11月</option>
+                <option value="12">12月</option>
+            </select>
+            
+            <button onclick="loadShifts()">表示</button>
+        </div>
+        
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <h2 id="calendar-title">シフトカレンダー</h2>
+            </div>
+            
+            <div id="calendar-content" class="loading">
+                読み込み中...
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Shift Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">シフト編集</h3>
+                <button class="close-button" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <div id="modal-warnings"></div>
+            <div id="modal-error"></div>
+            
+            <div class="worker-list" id="worker-list">
+                <!-- Populated by JavaScript -->
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+                <button class="btn-save" onclick="saveShift()">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentYear, currentMonth;
+        let currentEditDate;
+        let allWorkers = [];
+        let shiftsData = {};
+        let ngDaysData = {};
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeControls();
+            loadWorkers();
+            loadShifts();
+        });
+        
+        function initializeControls() {
+            const now = new Date();
+            currentYear = now.getFullYear();
+            currentMonth = now.getMonth() + 1;
+            
+            // Populate year select
+            const yearSelect = document.getElementById('year-select');
+            for (let year = currentYear - 1; year <= currentYear + 2; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year + '年';
+                if (year === currentYear) {
+                    option.selected = true;
+                }
+                yearSelect.appendChild(option);
+            }
+            
+            // Set current month
+            document.getElementById('month-select').value = currentMonth;
+        }
+        
+        async function loadWorkers() {
+            try {
+                const response = await fetch('/admin/api/workers');
+                if (!response.ok) {
+                    throw new Error('Failed to load workers');
+                }
+                allWorkers = await response.json();
+            } catch (error) {
+                console.error('Error loading workers:', error);
+                alert('従業員データの読み込みに失敗しました');
+            }
+        }
+        
+        async function loadShifts() {
+            const year = parseInt(document.getElementById('year-select').value);
+            const month = parseInt(document.getElementById('month-select').value);
+            
+            currentYear = year;
+            currentMonth = month;
+            
+            document.getElementById('calendar-content').innerHTML = '<div class="loading">読み込み中...</div>';
+            
+            try {
+                // Load shifts
+                const shiftsResponse = await fetch(`/admin/api/shifts?year=${year}&month=${month}`);
+                if (!shiftsResponse.ok) {
+                    throw new Error('Failed to load shifts');
+                }
+                const shifts = await shiftsResponse.json();
+                
+                // Load NG days
+                const ngDaysResponse = await fetch(`/admin/api/ng-days?year=${year}&month=${month}`);
+                if (!ngDaysResponse.ok) {
+                    throw new Error('Failed to load NG days');
+                }
+                const ngDays = await ngDaysResponse.json();
+                
+                // Process data
+                shiftsData = {};
+                shifts.forEach(shift => {
+                    const dateKey = shift.shift_date;
+                    if (!shiftsData[dateKey]) {
+                        shiftsData[dateKey] = [];
+                    }
+                    shiftsData[dateKey].push(shift);
+                });
+                
+                ngDaysData = ngDays;
+                
+                renderCalendar(year, month);
+            } catch (error) {
+                console.error('Error loading shifts:', error);
+                document.getElementById('calendar-content').innerHTML = 
+                    '<div class="error-message">シフトデータの読み込みに失敗しました</div>';
+            }
+        }
+        
+        function renderCalendar(year, month) {
+            document.getElementById('calendar-title').textContent = `${year}年${month}月`;
+            
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
+            const daysInMonth = lastDay.getDate();
+            const startDayOfWeek = firstDay.getDay();
+            
+            let html = '';
+            
+            // Day headers
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+            dayNames.forEach(day => {
+                html += `<div class="calendar-day-header">${day}</div>`;
+            });
+            
+            // Empty cells before first day
+            for (let i = 0; i < startDayOfWeek; i++) {
+                html += '<div class="calendar-day empty"></div>';
+            }
+            
+            // Days of month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayShifts = shiftsData[dateStr] || [];
+                const dayNgDays = ngDaysData[dateStr] || [];
+                
+                html += `<div class="calendar-day" onclick="openEditModal('${dateStr}')">`;
+                html += `<div class="day-number">${day}</div>`;
+                html += '<div class="day-workers">';
+                
+                if (dayShifts.length > 0) {
+                    dayShifts.forEach(shift => {
+                        const hasNgDay = dayNgDays.includes(shift.worker_id);
+                        const className = hasNgDay ? 'worker-tag ng-day' : 'worker-tag';
+                        html += `<span class="${className}">${shift.worker_name}</span>`;
+                    });
+                }
+                
+                if (dayNgDays.length > 0 && dayShifts.length === 0) {
+                    html += `<div class="ng-warning">NG日: ${dayNgDays.length}名</div>`;
+                }
+                
+                html += '</div>';
+                html += '</div>';
+            }
+            
+            document.getElementById('calendar-content').innerHTML = 
+                '<div class="calendar">' + html + '</div>';
+        }
+        
+        function openEditModal(dateStr) {
+            currentEditDate = dateStr;
+            const date = new Date(dateStr);
+            const formattedDate = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+            
+            document.getElementById('modal-title').textContent = `${formattedDate} のシフト編集`;
+            document.getElementById('modal-warnings').innerHTML = '';
+            document.getElementById('modal-error').innerHTML = '';
+            
+            const currentShifts = shiftsData[dateStr] || [];
+            const currentWorkerIds = currentShifts.map(s => s.worker_id);
+            const ngWorkerIds = ngDaysData[dateStr] || [];
+            
+            let html = '';
+            allWorkers.forEach(worker => {
+                const isChecked = currentWorkerIds.includes(worker.id);
+                const hasNgDay = ngWorkerIds.includes(worker.id);
+                const className = hasNgDay ? 'worker-checkbox has-ng-day' : 'worker-checkbox';
+                
+                html += `<div class="${className}">`;
+                html += `<input type="checkbox" id="worker-${worker.id}" value="${worker.id}" ${isChecked ? 'checked' : ''}>`;
+                html += `<label for="worker-${worker.id}">${worker.name}</label>`;
+                if (hasNgDay) {
+                    html += '<span class="ng-badge">NG日</span>';
+                }
+                html += '</div>';
+            });
+            
+            document.getElementById('worker-list').innerHTML = html;
+            document.getElementById('edit-modal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('edit-modal').classList.remove('active');
+        }
+        
+        async function saveShift() {
+            const checkboxes = document.querySelectorAll('#worker-list input[type="checkbox"]');
+            const selectedWorkerIds = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            try {
+                const response = await fetch(`/admin/api/shifts/${currentEditDate}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        worker_ids: selectedWorkerIds
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to save shift');
+                }
+                
+                const result = await response.json();
+                
+                // Show warnings if any
+                if (result.warnings && result.warnings.length > 0) {
+                    let warningHtml = '<div class="warning-message"><strong>警告:</strong>';
+                    result.warnings.forEach(warning => {
+                        warningHtml += `<div>${warning}</div>`;
+                    });
+                    warningHtml += '</div>';
+                    document.getElementById('modal-warnings').innerHTML = warningHtml;
+                } else {
+                    // Close modal and reload
+                    closeModal();
+                    loadShifts();
+                }
+            } catch (error) {
+                console.error('Error saving shift:', error);
+                document.getElementById('modal-error').innerHTML = 
+                    `<div class="error-message">保存に失敗しました: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

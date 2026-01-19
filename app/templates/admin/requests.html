@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>申請管理 - シフト申請管理システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 20px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .user-info {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .logout-button {
+            padding: 8px 16px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .logout-button:hover {
+            background: #c82333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        .back-link {
+            display: inline-block;
+            color: #667eea;
+            text-decoration: none;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .page-header {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .page-header h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+        
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-group label {
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .filter-group input,
+        .filter-group select {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .filter-actions {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .requests-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .table-header h3 {
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .result-count {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            background: #f8f9fa;
+        }
+        
+        th {
+            padding: 12px 24px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            padding: 16px 24px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .empty-state {
+            padding: 48px 24px;
+            text-align: center;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .empty-state-text {
+            font-size: 16px;
+        }
+        
+        .loading {
+            padding: 48px 24px;
+            text-align: center;
+            color: #666;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message {
+            display: none;
+        }
+        
+        .message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>シフト申請管理システム</h1>
+        <div class="header-right">
+            <span class="user-info">{{ admin.name }}</span>
+            <form action="/admin/logout" method="POST" style="display: inline;">
+                <button type="submit" class="logout-button">ログアウト</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="container">
+        <a href="/admin/dashboard" class="back-link">← ダッシュボードに戻る</a>
+        
+        <div id="successMessage" class="success-message message"></div>
+        <div id="errorMessage" class="error-message message"></div>
+        
+        <div class="page-header">
+            <h2>申請管理</h2>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="statusFilter">ステータス</label>
+                    <select id="statusFilter">
+                        <option value="">すべて</option>
+                        <option value="pending">保留中</option>
+                        <option value="approved">承認済み</option>
+                        <option value="rejected">却下</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="workerNameFilter">従業員名</label>
+                    <input type="text" id="workerNameFilter" placeholder="従業員名で検索">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="monthFilter">月</label>
+                    <select id="monthFilter">
+                        <option value="">すべて</option>
+                        <option value="1">1月</option>
+                        <option value="2">2月</option>
+                        <option value="3">3月</option>
+                        <option value="4">4月</option>
+                        <option value="5">5月</option>
+                        <option value="6">6月</option>
+                        <option value="7">7月</option>
+                        <option value="8">8月</option>
+                        <option value="9">9月</option>
+                        <option value="10">10月</option>
+                        <option value="11">11月</option>
+                        <option value="12">12月</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="yearFilter">年</label>
+                    <select id="yearFilter">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+                
+                <div class="filter-actions">
+                    <button class="btn btn-primary" onclick="applyFilters()">検索</button>
+                    <button class="btn btn-secondary" onclick="clearFilters()">クリア</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="requests-table">
+            <div class="table-header">
+                <h3>申請一覧</h3>
+                <span class="result-count" id="resultCount">読み込み中...</span>
+            </div>
+            
+            <div id="tableContent">
+                <div class="loading">
+                    <p>読み込み中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentRequests = [];
+        
+        // Initialize year filter
+        function initYearFilter() {
+            const yearFilter = document.getElementById('yearFilter');
+            const currentYear = new Date().getFullYear();
+            
+            for (let year = currentYear - 1; year <= currentYear + 2; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year + '年';
+                yearFilter.appendChild(option);
+            }
+            
+            // Set current year as default
+            yearFilter.value = currentYear;
+        }
+        
+        // Load requests from API
+        async function loadRequests() {
+            try {
+                const params = new URLSearchParams();
+                
+                const status = document.getElementById('statusFilter').value;
+                const workerName = document.getElementById('workerNameFilter').value;
+                const month = document.getElementById('monthFilter').value;
+                const year = document.getElementById('yearFilter').value;
+                
+                if (status) params.append('status', status);
+                if (workerName) params.append('worker_name', workerName);
+                if (month) params.append('month', month);
+                if (year) params.append('year', year);
+                
+                const response = await fetch(`/admin/api/requests?${params.toString()}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load requests');
+                }
+                
+                currentRequests = await response.json();
+                renderRequests();
+            } catch (error) {
+                console.error('Error loading requests:', error);
+                showError('申請の読み込みに失敗しました');
+                document.getElementById('tableContent').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-text">申請の読み込みに失敗しました</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Render requests table
+        function renderRequests() {
+            const tableContent = document.getElementById('tableContent');
+            const resultCount = document.getElementById('resultCount');
+            
+            resultCount.textContent = `${currentRequests.length}件の申請`;
+            
+            if (currentRequests.length === 0) {
+                tableContent.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">申請がありません</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>従業員名</th>
+                            <th>申請日付</th>
+                            <th>ステータス</th>
+                            <th>申請日時</th>
+                            <th>処理日時</th>
+                            <th>処理者</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            currentRequests.forEach(request => {
+                const statusClass = `status-${request.status}`;
+                const statusText = {
+                    'pending': '保留中',
+                    'approved': '承認済み',
+                    'rejected': '却下'
+                }[request.status];
+                
+                const requestDate = new Date(request.request_date).toLocaleDateString('ja-JP');
+                const createdAt = new Date(request.created_at).toLocaleString('ja-JP');
+                const processedAt = request.processed_at ? new Date(request.processed_at).toLocaleString('ja-JP') : '-';
+                const processorName = request.processor_name || '-';
+                
+                let actionButtons = '';
+                if (request.status === 'pending') {
+                    actionButtons = `
+                        <div class="action-buttons">
+                            <button class="btn btn-success" onclick="approveRequest('${request.id}')">承認</button>
+                            <button class="btn btn-danger" onclick="rejectRequest('${request.id}')">却下</button>
+                        </div>
+                    `;
+                } else {
+                    actionButtons = '<span style="color: #999;">-</span>';
+                }
+                
+                tableHTML += `
+                    <tr>
+                        <td>${request.worker_name}</td>
+                        <td>${requestDate}</td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>${createdAt}</td>
+                        <td>${processedAt}</td>
+                        <td>${processorName}</td>
+                        <td>${actionButtons}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+            
+            tableContent.innerHTML = tableHTML;
+        }
+        
+        // Approve request
+        async function approveRequest(requestId) {
+            if (!confirm('この申請を承認しますか？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/admin/api/requests/${requestId}/approve`, {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to approve request');
+                }
+                
+                showSuccess('申請を承認しました');
+                await loadRequests();
+            } catch (error) {
+                console.error('Error approving request:', error);
+                showError('申請の承認に失敗しました: ' + error.message);
+            }
+        }
+        
+        // Reject request
+        async function rejectRequest(requestId) {
+            if (!confirm('この申請を却下しますか？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/admin/api/requests/${requestId}/reject`, {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to reject request');
+                }
+                
+                showSuccess('申請を却下しました');
+                await loadRequests();
+            } catch (error) {
+                console.error('Error rejecting request:', error);
+                showError('申請の却下に失敗しました: ' + error.message);
+            }
+        }
+        
+        // Apply filters
+        function applyFilters() {
+            loadRequests();
+        }
+        
+        // Clear filters
+        function clearFilters() {
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('workerNameFilter').value = '';
+            document.getElementById('monthFilter').value = '';
+            document.getElementById('yearFilter').value = new Date().getFullYear();
+            loadRequests();
+        }
+        
+        // Show success message
+        function showSuccess(message) {
+            const successMessage = document.getElementById('successMessage');
+            successMessage.textContent = message;
+            successMessage.classList.add('show');
+            
+            setTimeout(() => {
+                successMessage.classList.remove('show');
+            }, 5000);
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            
+            setTimeout(() => {
+                errorMessage.classList.remove('show');
+            }, 5000);
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initYearFilter();
+            loadRequests();
+        });
+    </script>
+</body>
+</html>
