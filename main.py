@@ -21,11 +21,15 @@ app.include_router(admin_router)
 @app.on_event("startup")
 async def startup_event():
     """Initialize application on startup."""
-    # Initialize database tables
-    init_db()
-    
-    # Start the reminder scheduler
-    start_scheduler()
+    try:
+        # Initialize database tables
+        init_db()
+        
+        # Start the reminder scheduler
+        start_scheduler()
+    except Exception as e:
+        print(f"Startup error: {e}")
+        # Continue startup even if some services fail
 
 
 @app.on_event("shutdown")
@@ -45,6 +49,12 @@ async def root():
 async def health():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/ping")
+async def ping():
+    """Simple ping endpoint for Railway health check."""
+    return {"ping": "pong"}
 
 
 @app.post("/webhook/line")
@@ -73,9 +83,11 @@ async def line_webhook(
 
 if __name__ == "__main__":
     import uvicorn
+    import os
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=port,
         reload=settings.debug
     )
