@@ -21,15 +21,26 @@ app.include_router(admin_router)
 @app.on_event("startup")
 async def startup_event():
     """Initialize application on startup."""
+    import time
+    
+    # Wait a bit for database to be ready
+    time.sleep(5)
+    
     try:
         # Initialize database tables
         init_db()
-        
+        print("Database initialized successfully")
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+        # Continue startup even if database fails
+    
+    try:
         # Start the reminder scheduler
         start_scheduler()
+        print("Scheduler started successfully")
     except Exception as e:
-        print(f"Startup error: {e}")
-        # Continue startup even if some services fail
+        print(f"Scheduler startup error: {e}")
+        # Continue startup even if scheduler fails
 
 
 @app.on_event("shutdown")
