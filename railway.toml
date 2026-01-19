@@ -5,3 +5,4 @@ builder = "nixpacks"
 healthcheckPath = "/ping"
 healthcheckTimeout = 120
 restartPolicyType = "on_failure"
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
