@@ -1,0 +1,34 @@
+"""Simplified main application for Railway deployment."""
+from fastapi import FastAPI
+import os
+
+app = FastAPI(
+    title="Shift Request Management System",
+    description="LINE Bot and Web interface for managing shift requests",
+    version="1.0.0"
+)
+
+@app.get("/")
+async def root():
+    """Health check endpoint."""
+    return {"status": "ok", "message": "Shift Request Management System"}
+
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {"status": "healthy"}
+
+@app.get("/ping")
+async def ping():
+    """Simple ping endpoint for Railway health check."""
+    return {"ping": "pong"}
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(
+        "main_simple:app",
+        host="0.0.0.0",
+        port=port,
+        reload=False
+    )
