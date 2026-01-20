@@ -91,42 +91,91 @@ async def reset_database():
             "traceback": traceback.format_exc()
         }
 
-@app.get("/create-admin")
-async def create_admin_user():
-    """Create admin user (run once after database setup)."""
+@app.get("/create-admin-direct")
+async def create_admin_direct():
+    """Create admin user directly without using auth service."""
     try:
-        # Import required modules
-        import sys
-        sys.path.insert(0, '/app')
-        
-        from app.services.auth_service import AuthService
+        import uuid
+        from datetime import datetime
         from app.database import SessionLocal
-        from app.models.user import UserRole
+        from app.models.user import User, UserRole
+        from app.services.auth_service import AuthService
         
         db = SessionLocal()
         try:
-            auth_service = AuthService(db)
+            # Hash the password
+            hashed_password = AuthService.hash_password("admin123")
             
-            # Create admin user directly without checking existing
-            admin = auth_service.create_admin("admin", "admin123")
+            # Create admin user directly
+            admin_user = User(
+                id=str(uuid.uuid4()),
+                line_id=hashed_password,  # Store hashed password in line_id for admins
+                name="admin",
+                role=UserRole.ADMIN,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            # Add to database
+            db.add(admin_user)
+            db.commit()
+            db.refresh(admin_user)
             
             return {
-                "status": "success", 
-                "message": "Admin user created successfully",
-                "admin_id": admin.id,
+                "status": "success",
+                "message": "Admin user created successfully (direct method)",
+                "admin_id": admin_user.id,
                 "username": "admin",
                 "password": "admin123"
             }
+            
         finally:
             db.close()
             
     except Exception as e:
         import traceback
         return {
-            "status": "error", 
-            "message": f"Admin creation failed: {str(e)}",
+            "status": "error",
+            "message": f"Direct admin creation failed: {str(e)}",
             "traceback": traceback.format_exc()
         }
+
+@app.get("/check-users")
+async def check_users():
+    """Check existing users in database."""
+    try:
+        from app.database import SessionLocal
+        import pymysql
+        
+        # Direct SQL query to avoid enum issues
+        host = os.environ.get("MYSQLHOST")
+        port = int(os.environ.get("MYSQLPORT", 3306))
+        user = os.environ.get("MYSQLUSER")
+        password = os.environ.get("MYSQLPASSWORD")
+        database = os.environ.get("MYSQLDATABASE")
+        
+        connection = pymysql.connect(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            database=database
+        )
+        
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id, name, role FROM users")
+            users = cursor.fetchall()
+        
+        connection.close()
+        
+        return {
+            "status": "success",
+            "users": users,
+            "count": len(users)
+        }
+        
+    except Exception as e:
+        return {"status": "error", "message": f"Check users failed: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
