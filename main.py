@@ -33,6 +33,11 @@ async def ping():
     """Simple ping endpoint for Railway health check."""
     return {"ping": "pong"}
 
+@app.get("/test-db")
+async def test_db_simple():
+    """Simple database test without complex imports."""
+    return {"status": "endpoint_working", "message": "This endpoint is accessible"}
+
 @app.get("/setup-db")
 async def setup_database():
     """Setup database tables (run once after deployment)."""
