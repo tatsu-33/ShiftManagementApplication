@@ -52,46 +52,50 @@ async def env_debug():
         "port_value": all_env.get("PORT", "Not set")
     }
 
-@app.get("/db-connect-test")
-async def db_connect_test():
-    """Test basic database connection."""
+@app.get("/setup-db")
+async def setup_database():
+    """Setup database tables (run once after deployment)."""
     try:
-        import pymysql
+        # Import alembic functions
+        from alembic.config import Config
+        from alembic import command
+        import os
         
-        # Get database connection info
-        host = os.environ.get("MYSQLHOST")
-        port = int(os.environ.get("MYSQLPORT", 3306))
-        user = os.environ.get("MYSQLUSER")
-        password = os.environ.get("MYSQLPASSWORD")
-        database = os.environ.get("MYSQLDATABASE")
+        # Run alembic upgrade
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
         
-        if not all([host, user, password, database]):
-            return {"status": "error", "message": "Missing database environment variables"}
+        return {"status": "success", "message": "Database tables created successfully"}
+    except Exception as e:
+        return {"status": "error", "message": f"Database setup failed: {str(e)}"}
+
+@app.get("/create-admin")
+async def create_admin_user():
+    """Create admin user (run once after database setup)."""
+    try:
+        # Import required modules
+        import sys
+        sys.path.insert(0, '/app')
         
-        # Test connection
-        connection = pymysql.connect(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            database=database
-        )
+        from app.services.auth_service import AuthService
+        from app.database import SessionLocal
         
-        # Test query
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1 as test")
-            result = cursor.fetchone()
+        db = SessionLocal()
+        auth_service = AuthService(db)
         
-        connection.close()
+        # Create admin user
+        admin = auth_service.create_admin("admin", "admin123")
+        db.close()
         
         return {
             "status": "success", 
-            "message": "Database connection successful",
-            "test_result": result
+            "message": "Admin user created successfully",
+            "admin_id": admin.id,
+            "username": "admin",
+            "password": "admin123"
         }
-        
     except Exception as e:
-        return {"status": "error", "message": f"Database connection failed: {str(e)}"}
+        return {"status": "error", "message": f"Admin creation failed: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
