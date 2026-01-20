@@ -34,13 +34,22 @@ async def env_debug():
     import os
     all_env = dict(os.environ)
     
-    # Filter MySQL related variables
-    mysql_vars = {k: v for k, v in all_env.items() if 'MYSQL' in k.upper()}
+    # Show first 10 environment variables for debugging
+    sample_vars = dict(list(all_env.items())[:10])
+    
+    # Filter MySQL related variables (case insensitive)
+    mysql_vars = {}
+    for k, v in all_env.items():
+        if 'mysql' in k.lower():
+            mysql_vars[k] = v
     
     return {
         "status": "ok", 
         "mysql_vars": mysql_vars,
-        "total_env_count": len(all_env)
+        "sample_vars": sample_vars,
+        "total_env_count": len(all_env),
+        "has_port": "PORT" in all_env,
+        "port_value": all_env.get("PORT", "Not set")
     }
 
 @app.get("/db-connect-test")
