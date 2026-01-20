@@ -1,6 +1,16 @@
-"""Safe main application without any database dependencies."""
-from fastapi import FastAPI
+"""Main application with database functionality only."""
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
 import os
+
+# Import database functions
+try:
+    from app.database import get_db, init_db
+    from app.config import settings
+    DB_AVAILABLE = True
+except ImportError as e:
+    print(f"Database import failed: {e}")
+    DB_AVAILABLE = False
 
 app = FastAPI(
     title="Shift Request Management System",
@@ -23,15 +33,33 @@ async def ping():
     """Simple ping endpoint for Railway health check."""
     return {"ping": "pong"}
 
-@app.get("/test")
-async def test():
-    """Test endpoint."""
-    return {"status": "working", "message": "Application is running correctly"}
+@app.get("/db-test")
+async def db_test(db: Session = Depends(get_db) if DB_AVAILABLE else None):
+    """Test database connection."""
+    if not DB_AVAILABLE:
+        return {"status": "error", "message": "Database not available"}
+    
+    try:
+        # Simple database test
+        db.execute("SELECT 1")
+        return {"status": "ok", "message": "Database connection successful"}
+    except Exception as e:
+        return {"status": "error", "message": f"Database error: {str(e)}"}
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize application on startup."""
     print("Application starting up...")
+    
+    if DB_AVAILABLE:
+        try:
+            init_db()
+            print("Database initialized successfully")
+        except Exception as e:
+            print(f"Database initialization failed: {e}")
+    else:
+        print("Database not available, skipping initialization")
+    
     print("Application startup complete")
 
 if __name__ == "__main__":
