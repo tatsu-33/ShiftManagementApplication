@@ -69,6 +69,28 @@ async def setup_database():
     except Exception as e:
         return {"status": "error", "message": f"Database setup failed: {str(e)}"}
 
+@app.get("/reset-db")
+async def reset_database():
+    """Reset database by dropping and recreating all tables."""
+    try:
+        # Import required modules
+        from app.database import engine, Base
+        
+        # Drop all tables
+        Base.metadata.drop_all(bind=engine)
+        
+        # Recreate all tables
+        Base.metadata.create_all(bind=engine)
+        
+        return {"status": "success", "message": "Database reset successfully"}
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error", 
+            "message": f"Database reset failed: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
+
 @app.get("/create-admin")
 async def create_admin_user():
     """Create admin user (run once after database setup)."""
@@ -85,22 +107,7 @@ async def create_admin_user():
         try:
             auth_service = AuthService(db)
             
-            # Check if admin already exists
-            from app.models.user import User
-            existing_admin = db.query(User).filter(
-                User.name == "admin",
-                User.role == UserRole.ADMIN
-            ).first()
-            
-            if existing_admin:
-                return {
-                    "status": "info",
-                    "message": "Admin user already exists",
-                    "admin_id": existing_admin.id,
-                    "username": "admin"
-                }
-            
-            # Create admin user
+            # Create admin user directly without checking existing
             admin = auth_service.create_admin("admin", "admin123")
             
             return {
