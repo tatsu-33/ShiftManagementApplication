@@ -11,6 +11,9 @@ from app.api.admin import router as admin_router
 from app.models.user import User, UserRole
 from app.services.auth_service import AuthService
 
+# Import admin authentication function
+from app.api.admin import get_current_admin
+
 app = FastAPI(
     title="Shift Request Management System",
     description="LINE Bot and Web interface for managing shift requests",
@@ -88,6 +91,170 @@ async def line_webhook(
     Validates: Requirements 1.1
     """
     return await handle_webhook(request, db, x_line_signature)
+
+
+@app.get("/admin/users", response_class=HTMLResponse)
+async def users_page(
+    request: Request,
+    admin: User = Depends(get_current_admin)
+):
+    """
+    Display admin users management page.
+    
+    Args:
+        request: FastAPI request object
+        admin: Current authenticated admin user
+        
+    Returns:
+        HTML users management page
+    """
+    return templates.TemplateResponse(
+        "admin/users.html",
+        {"request": request, "admin": admin}
+    )
+
+
+@app.get("/admin/api/users")
+async def get_all_users(
+    admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all users (workers and admins).
+    
+    Args:
+        admin: Current authenticated admin user
+        db: Database session
+        
+    Returns:
+        JSON list of all users
+    """
+    users = db.query(User).all()
+    
+    result = []
+    for user in users:
+        result.append({
+            "id": user.id,
+            "name": user.name,
+            "line_id": user.line_id if user.role == UserRole.WORKER else "管理者",
+            "role": user.role.value,
+            "created_at": user.created_at.isoformat()
+        })
+    
+    return JSONResponse(content=result)
+
+
+@app.post("/admin/api/users")
+async def create_user(
+    name: str = Form(...),
+    line_id: str = Form(...),
+    admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new worker user.
+    
+    Args:
+        name: Worker name
+        line_id: LINE user ID
+        admin: Current authenticated admin user
+        db: Database session
+        
+    Returns:
+        JSON response with created user info
+    """
+    try:
+        auth_service = AuthService(db)
+        
+        # Register new worker
+        worker = auth_service.register_worker(line_id, name)
+        
+        return JSONResponse(content={
+            "status": "success",
+            "message": "ユーザーが正常に作成されました",
+            "user": {
+                "id": worker.id,
+                "name": worker.name,
+                "line_id": worker.line_id,
+                "role": worker.role.value,
+                "created_at": worker.created_at.isoformat()
+            }
+        })
+        
+    except ValueError as e:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "error",
+                "message": str(e)
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"ユーザー作成に失敗しました: {str(e)}"
+            }
+        )
+
+
+@app.delete("/admin/api/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a user.
+    
+    Args:
+        user_id: ID of the user to delete
+        admin: Current authenticated admin user
+        db: Database session
+        
+    Returns:
+        JSON response
+    """
+    try:
+        # Find the user
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "status": "error",
+                    "message": "ユーザーが見つかりません"
+                }
+            )
+        
+        # Don't allow deleting admin users
+        if user.role == UserRole.ADMIN:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": "error",
+                    "message": "管理者ユーザーは削除できません"
+                }
+            )
+        
+        # Delete the user
+        db.delete(user)
+        db.commit()
+        
+        return JSONResponse(content={
+            "status": "success",
+            "message": "ユーザーが正常に削除されました"
+        })
+        
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"ユーザー削除に失敗しました: {str(e)}"
+            }
+        )
 
 
 if __name__ == "__main__":
