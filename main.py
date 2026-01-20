@@ -158,9 +158,9 @@ async def create_admin_sql():
             "traceback": traceback.format_exc()
         }
 
-@app.get("/clear-users")
-async def clear_users():
-    """Clear all users from database."""
+@app.get("/fix-admin-role")
+async def fix_admin_role():
+    """Fix admin user role to correct enum value."""
     try:
         import pymysql
         
@@ -181,16 +181,31 @@ async def clear_users():
         
         try:
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM users")
+                # Update admin user role to correct enum value
+                sql = "UPDATE users SET role = %s WHERE name = %s"
+                cursor.execute(sql, ("ADMIN", "admin"))
                 connection.commit()
                 
-            return {"status": "success", "message": "All users cleared"}
+                # Check the result
+                cursor.execute("SELECT id, name, role FROM users WHERE name = 'admin'")
+                result = cursor.fetchone()
+                
+            return {
+                "status": "success",
+                "message": "Admin role fixed successfully",
+                "user": result
+            }
             
         finally:
             connection.close()
             
     except Exception as e:
-        return {"status": "error", "message": f"Clear users failed: {str(e)}"}
+        import traceback
+        return {
+            "status": "error",
+            "message": f"Fix admin role failed: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
 
 @app.get("/check-users")
 async def check_users():
