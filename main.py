@@ -28,17 +28,20 @@ async def test():
     """Test endpoint."""
     return {"status": "working", "message": "Application is running correctly"}
 
-@app.get("/env-check")
-async def env_check():
-    """Check if database environment variables are available."""
-    db_vars = {
-        "MYSQLHOST": os.environ.get("MYSQLHOST", "Not set"),
-        "MYSQLPORT": os.environ.get("MYSQLPORT", "Not set"),
-        "MYSQLUSER": os.environ.get("MYSQLUSER", "Not set"),
-        "MYSQLDATABASE": os.environ.get("MYSQLDATABASE", "Not set"),
-        "MYSQLPASSWORD": "***" if os.environ.get("MYSQLPASSWORD") else "Not set"
+@app.get("/env-debug")
+async def env_debug():
+    """Debug all environment variables."""
+    import os
+    all_env = dict(os.environ)
+    
+    # Filter MySQL related variables
+    mysql_vars = {k: v for k, v in all_env.items() if 'MYSQL' in k.upper()}
+    
+    return {
+        "status": "ok", 
+        "mysql_vars": mysql_vars,
+        "total_env_count": len(all_env)
     }
-    return {"status": "ok", "database_vars": db_vars}
 
 @app.get("/db-connect-test")
 async def db_connect_test():
