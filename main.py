@@ -79,23 +79,47 @@ async def create_admin_user():
         
         from app.services.auth_service import AuthService
         from app.database import SessionLocal
+        from app.models.user import UserRole
         
         db = SessionLocal()
-        auth_service = AuthService(db)
-        
-        # Create admin user
-        admin = auth_service.create_admin("admin", "admin123")
-        db.close()
-        
-        return {
-            "status": "success", 
-            "message": "Admin user created successfully",
-            "admin_id": admin.id,
-            "username": "admin",
-            "password": "admin123"
-        }
+        try:
+            auth_service = AuthService(db)
+            
+            # Check if admin already exists
+            from app.models.user import User
+            existing_admin = db.query(User).filter(
+                User.name == "admin",
+                User.role == UserRole.ADMIN
+            ).first()
+            
+            if existing_admin:
+                return {
+                    "status": "info",
+                    "message": "Admin user already exists",
+                    "admin_id": existing_admin.id,
+                    "username": "admin"
+                }
+            
+            # Create admin user
+            admin = auth_service.create_admin("admin", "admin123")
+            
+            return {
+                "status": "success", 
+                "message": "Admin user created successfully",
+                "admin_id": admin.id,
+                "username": "admin",
+                "password": "admin123"
+            }
+        finally:
+            db.close()
+            
     except Exception as e:
-        return {"status": "error", "message": f"Admin creation failed: {str(e)}"}
+        import traceback
+        return {
+            "status": "error", 
+            "message": f"Admin creation failed: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
 
 if __name__ == "__main__":
     import uvicorn
