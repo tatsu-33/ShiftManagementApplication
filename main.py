@@ -33,18 +33,48 @@ async def ping():
     """Simple ping endpoint for Railway health check."""
     return {"ping": "pong"}
 
-@app.get("/db-test")
-async def db_test(db: Session = Depends(get_db) if DB_AVAILABLE else None):
-    """Test database connection."""
+@app.get("/setup-db")
+async def setup_database():
+    """Setup database tables (run once after deployment)."""
     if not DB_AVAILABLE:
         return {"status": "error", "message": "Database not available"}
     
     try:
-        # Simple database test
-        db.execute("SELECT 1")
-        return {"status": "ok", "message": "Database connection successful"}
+        # Import alembic functions
+        from alembic.config import Config
+        from alembic import command
+        import os
+        
+        # Run alembic upgrade
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        
+        return {"status": "success", "message": "Database tables created successfully"}
     except Exception as e:
-        return {"status": "error", "message": f"Database error: {str(e)}"}
+        return {"status": "error", "message": f"Database setup failed: {str(e)}"}
+
+@app.get("/create-admin")
+async def create_admin_user():
+    """Create admin user (run once after database setup)."""
+    if not DB_AVAILABLE:
+        return {"status": "error", "message": "Database not available"}
+    
+    try:
+        from app.services.auth_service import AuthService
+        
+        db = next(get_db())
+        auth_service = AuthService(db)
+        
+        # Create admin user
+        admin = auth_service.create_admin("admin", "admin123")
+        
+        return {
+            "status": "success", 
+            "message": "Admin user created successfully",
+            "admin_id": admin.id
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Admin creation failed: {str(e)}"}
 
 @app.on_event("startup")
 async def startup_event():
