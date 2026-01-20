@@ -53,8 +53,9 @@ async def startup_event():
     
     if DB_AVAILABLE:
         try:
-            init_db()
-            print("Database initialized successfully")
+            # Skip init_db() for now - will be done manually
+            # init_db()
+            print("Database available, skipping automatic table creation")
         except Exception as e:
             print(f"Database initialization failed: {e}")
     else:
