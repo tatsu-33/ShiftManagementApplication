@@ -201,9 +201,9 @@ async def check_schema():
     except Exception as e:
         return {"status": "error", "message": f"Check schema failed: {str(e)}"}
 
-@app.get("/fix-admin-role-force")
-async def fix_admin_role_force():
-    """Force update admin role using all possible enum values."""
+@app.get("/fix-enum-schema")
+async def fix_enum_schema():
+    """Fix the enum schema to match application expectations."""
     try:
         import pymysql
         
@@ -222,51 +222,42 @@ async def fix_admin_role_force():
             database=database
         )
         
-        results = []
-        
         try:
             with connection.cursor() as cursor:
-                # Try different enum values
-                enum_values = ["ADMIN", "Admin", "admin", "WORKER", "Worker", "worker"]
+                # Alter the table to use correct enum values
+                sql = "ALTER TABLE users MODIFY COLUMN role ENUM('WORKER', 'ADMIN') NOT NULL"
+                cursor.execute(sql)
+                connection.commit()
                 
-                for enum_val in enum_values:
-                    try:
-                        sql = "UPDATE users SET role = %s WHERE name = 'admin'"
-                        cursor.execute(sql, (enum_val,))
-                        connection.commit()
-                        
-                        # Check if it worked
-                        cursor.execute("SELECT role FROM users WHERE name = 'admin'")
-                        result = cursor.fetchone()
-                        
-                        results.append({
-                            "tried": enum_val,
-                            "success": True,
-                            "result": result[0] if result else None
-                        })
-                        
-                        # If we successfully set it to an admin-like value, break
-                        if result and result[0].upper() in ["ADMIN", "Admin"]:
-                            break
-                            
-                    except Exception as e:
-                        results.append({
-                            "tried": enum_val,
-                            "success": False,
-                            "error": str(e)
-                        })
+                # Update existing admin user to use correct enum value
+                sql = "UPDATE users SET role = 'ADMIN' WHERE name = 'admin'"
+                cursor.execute(sql)
+                connection.commit()
+                
+                # Verify the changes
+                cursor.execute("DESCRIBE users")
+                columns = cursor.fetchall()
+                
+                cursor.execute("SELECT id, name, role FROM users WHERE name = 'admin'")
+                admin_user = cursor.fetchone()
                 
             return {
                 "status": "success",
-                "message": "Force update completed",
-                "results": results
+                "message": "Enum schema fixed successfully",
+                "role_column": [col for col in columns if col[0] == 'role'][0],
+                "admin_user": admin_user
             }
             
         finally:
             connection.close()
             
     except Exception as e:
-        return {"status": "error", "message": f"Force update failed: {str(e)}"}
+        import traceback
+        return {
+            "status": "error",
+            "message": f"Fix enum schema failed: {str(e)}",
+            "traceback": traceback.format_exc()
+        }
 
 @app.get("/check-users")
 async def check_users():
