@@ -331,42 +331,7 @@ def handle_postback(event: PostbackEvent):
         logger.error(f"Error sending reply: {str(e)}")
 
 
-@webhook_handler.add(FollowEvent)
-def handle_follow(event: FollowEvent):
-    """
-    Handle follow events when a user adds the bot as a friend.
-    
-    This function welcomes new users and can trigger worker registration.
-    It also links the default Rich Menu to the new user.
-    
-    Args:
-        event: LINE FollowEvent object
-        
-    Validates: Requirements 8.5, 1.1, 3.1
-    """
-    user_id = event.source.user_id
-    
-    logger.info(f"New user followed: {user_id}")
-    
-    # TODO: Implement user registration flow
-    # This will be integrated with AuthService in subsequent tasks
-    # For now, send a welcome message
-    try:
-        welcome_message = TextSendMessage(
-            text="シフト申請管理システムへようこそ！\n"
-                 "このボットを使って、翌月のNG日を申請できます。\n\n"
-                 "下のメニューから操作を選択してください：\n"
-                 "・申請 - NG日を申請\n"
-                 "・一覧 - 申請一覧を表示"
-        )
-        line_bot_api.reply_message(event.reply_token, welcome_message)
-        
-        # Note: Rich Menu should be set as default, so it will automatically
-        # appear for new users. If you need to explicitly link it, you can
-        # get the default Rich Menu ID and link it here.
-        
-    except LineBotApiError as e:
-        logger.error(f"Error sending welcome message: {str(e)}")
+
 
 
 def get_user_profile(user_id: str) -> Optional[dict]:

@@ -69,6 +69,22 @@ async def ping():
     return {"ping": "pong"}
 
 
+@app.get("/test/line-config")
+async def test_line_config():
+    """Test LINE Bot configuration."""
+    from app.config import settings
+    
+    return {
+        "status": "ok",
+        "line_config": {
+            "channel_access_token_set": bool(settings.line_channel_access_token),
+            "channel_secret_set": bool(settings.line_channel_secret),
+            "channel_access_token_length": len(settings.line_channel_access_token) if settings.line_channel_access_token else 0,
+            "channel_secret_length": len(settings.line_channel_secret) if settings.line_channel_secret else 0
+        }
+    }
+
+
 @app.post("/webhook/line")
 async def line_webhook(
     request: Request,
@@ -90,6 +106,11 @@ async def line_webhook(
         
     Validates: Requirements 1.1
     """
+    # Log the incoming request for debugging
+    body = await request.body()
+    print(f"LINE webhook received: {body.decode('utf-8')}")
+    print(f"X-Line-Signature: {x_line_signature}")
+    
     return await handle_webhook(request, db, x_line_signature)
 
 
