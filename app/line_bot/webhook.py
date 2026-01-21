@@ -92,6 +92,51 @@ async def handle_webhook(
 _current_db_session: Optional[Session] = None
 
 
+@webhook_handler.add(FollowEvent)
+def handle_follow(event: FollowEvent):
+    """
+    Handle follow event when user adds the bot as friend.
+    
+    Args:
+        event: LINE FollowEvent object
+    """
+    user_id = event.source.user_id
+    logger.info(f"New follower: {user_id}")
+    
+    try:
+        if _current_db_session is None:
+            logger.error("No database session available")
+            return
+        
+        # Get user profile from LINE
+        try:
+            profile = line_bot_api.get_profile(user_id)
+            display_name = profile.display_name
+        except LineBotApiError:
+            display_name = f"ユーザー_{user_id[-8:]}"
+        
+        # Register new worker
+        auth_service = AuthService(_current_db_session)
+        worker, created = auth_service.get_or_create_worker(user_id, display_name)
+        
+        if created:
+            logger.info(f"New worker registered on follow: {worker.name} (ID: {worker.id})")
+        
+        # Send welcome message
+        welcome_message = TextSendMessage(
+            text=f"こんにちは、{display_name}さん！\n"
+                 f"シフト申請システムへようこそ。\n\n"
+                 f"利用可能なコマンド:\n"
+                 f"・申請 - NG日を申請\n"
+                 f"・一覧 - 申請一覧を表示\n\n"
+                 f"何かメッセージを送信してください。"
+        )
+        line_bot_api.reply_message(event.reply_token, welcome_message)
+        
+    except Exception as e:
+        logger.error(f"Error in handle_follow: {str(e)}")
+
+
 @webhook_handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event: MessageEvent):
     """
@@ -120,6 +165,31 @@ def handle_text_message(event: MessageEvent):
             line_bot_api.reply_message(event.reply_token, reply_message)
             return
         
+        # Get or create user (auto-registration)
+        auth_service = AuthService(_current_db_session)
+        
+        try:
+            # Get user profile from LINE
+            profile = line_bot_api.get_profile(user_id)
+            display_name = profile.display_name
+        except LineBotApiError:
+            display_name = f"ユーザー_{user_id[-8:]}"  # Use last 8 chars of user_id as fallback
+        
+        # Get or create worker
+        worker, created = auth_service.get_or_create_worker(user_id, display_name)
+        
+        if created:
+            logger.info(f"New worker registered: {worker.name} (ID: {worker.id})")
+            welcome_message = TextSendMessage(
+                text=f"こんにちは、{display_name}さん！\n"
+                     f"シフト申請システムへようこそ。\n\n"
+                     f"利用可能なコマンド:\n"
+                     f"・申請 - NG日を申請\n"
+                     f"・一覧 - 申請一覧を表示"
+            )
+            line_bot_api.reply_message(event.reply_token, welcome_message)
+            return
+        
         # Handle calendar request
         if message_text in ["申請", "カレンダー", "NG日申請"]:
             success = show_calendar(user_id, event.reply_token, _current_db_session)
@@ -146,6 +216,15 @@ def handle_text_message(event: MessageEvent):
             line_bot_api.reply_message(event.reply_token, reply_message)
     except LineBotApiError as e:
         logger.error(f"Error sending reply: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error in handle_text_message: {str(e)}")
+        reply_message = TextSendMessage(
+            text="システムエラーが発生しました。後でもう一度お試しください。"
+        )
+        try:
+            line_bot_api.reply_message(event.reply_token, reply_message)
+        except:
+            pass
 
 
 @webhook_handler.add(PostbackEvent)
