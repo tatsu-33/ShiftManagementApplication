@@ -69,6 +69,47 @@ async def ping():
     return {"ping": "pong"}
 
 
+@app.get("/admin/check-enum-values")
+async def check_enum_values(db: Session = Depends(get_db)):
+    """Check current enum values in database."""
+    from sqlalchemy import text
+    
+    try:
+        # Check request status values
+        result1 = db.execute(text("SELECT DISTINCT status FROM requests")).fetchall()
+        
+        # Check user role values
+        result2 = db.execute(text("SELECT DISTINCT role FROM users")).fetchall()
+        
+        # Check specific user's requests
+        result3 = db.execute(text("""
+            SELECT r.id, r.status, r.request_date, u.name 
+            FROM requests r 
+            JOIN users u ON r.worker_id = u.id 
+            WHERE u.line_id = 'Ufc7676629c0bd73b842ef540c297f117'
+        """)).fetchall()
+        
+        return {
+            "status": "ok",
+            "request_statuses": [row[0] for row in result1],
+            "user_roles": [row[0] for row in result2],
+            "user_requests": [
+                {
+                    "id": row[0],
+                    "status": row[1], 
+                    "request_date": str(row[2]),
+                    "user_name": row[3]
+                } for row in result3
+            ]
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to check enum values: {str(e)}"
+        }
+
+
 @app.get("/admin/fix-enum-values")
 async def fix_enum_values(db: Session = Depends(get_db)):
     """Fix enum values in database (convert lowercase to uppercase)."""
