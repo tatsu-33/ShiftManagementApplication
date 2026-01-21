@@ -72,9 +72,11 @@ async def ping():
 @app.get("/admin/fix-enum-values")
 async def fix_enum_values(db: Session = Depends(get_db)):
     """Fix enum values in database (convert lowercase to uppercase)."""
+    from sqlalchemy import text
+    
     try:
         # Fix request status enum values
-        result = db.execute("""
+        result = db.execute(text("""
             UPDATE requests 
             SET status = CASE 
                 WHEN status = 'pending' THEN 'PENDING'
@@ -83,10 +85,10 @@ async def fix_enum_values(db: Session = Depends(get_db)):
                 ELSE status
             END
             WHERE status IN ('pending', 'approved', 'rejected')
-        """)
+        """))
         
         # Fix user role enum values
-        result2 = db.execute("""
+        result2 = db.execute(text("""
             UPDATE users 
             SET role = CASE 
                 WHEN role = 'worker' THEN 'WORKER'
@@ -94,7 +96,7 @@ async def fix_enum_values(db: Session = Depends(get_db)):
                 ELSE role
             END
             WHERE role IN ('worker', 'admin')
-        """)
+        """))
         
         db.commit()
         
