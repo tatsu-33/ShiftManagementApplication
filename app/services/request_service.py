@@ -40,7 +40,7 @@ class RequestService:
             Deadline day (1-31), defaults to 10 if not set
         """
         setting = self.db.query(SettingsModel).filter(
-            SettingsModel.key == "deadline_day"
+            SettingsModel.key == "application_deadline_day"
         ).first()
         
         if setting:
