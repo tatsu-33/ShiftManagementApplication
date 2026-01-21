@@ -69,50 +69,89 @@ async def ping():
     return {"ping": "pong"}
 
 
-@app.get("/admin/force-fix-enum")
-async def force_fix_enum(db: Session = Depends(get_db)):
-    """Force fix specific enum values that weren't updated."""
+@app.get("/admin/check-schema")
+async def check_schema(db: Session = Depends(get_db)):
+    """Check database schema for enum definitions."""
     from sqlalchemy import text
     
     try:
-        # Force update the specific record
-        result = db.execute(text("""
-            UPDATE requests 
-            SET status = 'PENDING'
-            WHERE id = '8167ce09-5be2-48c8-bbd3-d4b24077e3aa'
-        """))
+        # Check table schema for requests table
+        schema_result = db.execute(text("DESCRIBE requests")).fetchall()
         
-        # Also update any other pending records
-        result2 = db.execute(text("""
-            UPDATE requests 
-            SET status = 'PENDING'
-            WHERE status = 'pending'
+        # Check enum values defined in the schema
+        enum_result = db.execute(text("""
+            SELECT COLUMN_NAME, COLUMN_TYPE 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = 'requests' 
+            AND COLUMN_NAME = 'status'
+        """)).fetchall()
+        
+        # Check current data
+        data_result = db.execute(text("""
+            SELECT id, status, HEX(status) as status_hex
+            FROM requests 
+            WHERE id = '8167ce09-5be2-48c8-bbd3-d4b24077e3aa'
+        """)).fetchall()
+        
+        return {
+            "status": "ok",
+            "table_schema": [
+                {
+                    "field": row[0],
+                    "type": row[1],
+                    "null": row[2],
+                    "key": row[3],
+                    "default": row[4],
+                    "extra": row[5]
+                } for row in schema_result
+            ],
+            "enum_definition": [
+                {
+                    "column_name": row[0],
+                    "column_type": row[1]
+                } for row in enum_result
+            ],
+            "current_data": [
+                {
+                    "id": row[0],
+                    "status": row[1],
+                    "status_hex": row[2]
+                } for row in data_result
+            ]
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to check schema: {str(e)}"
+        }
+
+
+@app.get("/admin/delete-problematic-record")
+async def delete_problematic_record(db: Session = Depends(get_db)):
+    """Delete the problematic record as a last resort."""
+    from sqlalchemy import text
+    
+    try:
+        # Delete the problematic record
+        result = db.execute(text("""
+            DELETE FROM requests 
+            WHERE id = '8167ce09-5be2-48c8-bbd3-d4b24077e3aa'
         """))
         
         db.commit()
         
-        # Verify the fix
-        check_result = db.execute(text("""
-            SELECT id, status FROM requests 
-            WHERE id = '8167ce09-5be2-48c8-bbd3-d4b24077e3aa'
-        """)).fetchone()
-        
         return {
             "status": "success",
-            "message": "Forced enum fix completed",
-            "specific_record_updated": result.rowcount,
-            "all_pending_updated": result2.rowcount,
-            "verification": {
-                "id": check_result[0] if check_result else None,
-                "status": check_result[1] if check_result else None
-            }
+            "message": "Problematic record deleted",
+            "records_deleted": result.rowcount
         }
         
     except Exception as e:
         db.rollback()
         return {
             "status": "error",
-            "message": f"Failed to force fix enum: {str(e)}"
+            "message": f"Failed to delete record: {str(e)}"
         }
 
 
