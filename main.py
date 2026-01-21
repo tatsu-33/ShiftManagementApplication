@@ -69,6 +69,50 @@ async def ping():
     return {"ping": "pong"}
 
 
+@app.get("/admin/fix-enum-values")
+async def fix_enum_values(db: Session = Depends(get_db)):
+    """Fix enum values in database (convert lowercase to uppercase)."""
+    try:
+        # Fix request status enum values
+        result = db.execute("""
+            UPDATE requests 
+            SET status = CASE 
+                WHEN status = 'pending' THEN 'PENDING'
+                WHEN status = 'approved' THEN 'APPROVED' 
+                WHEN status = 'rejected' THEN 'REJECTED'
+                ELSE status
+            END
+            WHERE status IN ('pending', 'approved', 'rejected')
+        """)
+        
+        # Fix user role enum values
+        result2 = db.execute("""
+            UPDATE users 
+            SET role = CASE 
+                WHEN role = 'worker' THEN 'WORKER'
+                WHEN role = 'admin' THEN 'ADMIN'
+                ELSE role
+            END
+            WHERE role IN ('worker', 'admin')
+        """)
+        
+        db.commit()
+        
+        return {
+            "status": "success",
+            "message": "Enum values fixed successfully",
+            "requests_updated": result.rowcount,
+            "users_updated": result2.rowcount
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {
+            "status": "error",
+            "message": f"Failed to fix enum values: {str(e)}"
+        }
+
+
 @app.get("/test/deadline-config")
 async def test_deadline_config(db: Session = Depends(get_db)):
     """Test deadline configuration (no auth required)."""
