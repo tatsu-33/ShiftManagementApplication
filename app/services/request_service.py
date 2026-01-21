@@ -188,11 +188,6 @@ class RequestService:
             raise
         
         return new_request
-            self.db.rollback()
-            # Handle unique constraint violation
-            if "uq_worker_request_date" in str(e):
-                raise DuplicateRequestError(worker.name, request_date)
-            raise
         
         return new_request
     
