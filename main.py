@@ -69,6 +69,53 @@ async def ping():
     return {"ping": "pong"}
 
 
+@app.get("/admin/force-fix-enum")
+async def force_fix_enum(db: Session = Depends(get_db)):
+    """Force fix specific enum values that weren't updated."""
+    from sqlalchemy import text
+    
+    try:
+        # Force update the specific record
+        result = db.execute(text("""
+            UPDATE requests 
+            SET status = 'PENDING'
+            WHERE id = '8167ce09-5be2-48c8-bbd3-d4b24077e3aa'
+        """))
+        
+        # Also update any other pending records
+        result2 = db.execute(text("""
+            UPDATE requests 
+            SET status = 'PENDING'
+            WHERE status = 'pending'
+        """))
+        
+        db.commit()
+        
+        # Verify the fix
+        check_result = db.execute(text("""
+            SELECT id, status FROM requests 
+            WHERE id = '8167ce09-5be2-48c8-bbd3-d4b24077e3aa'
+        """)).fetchone()
+        
+        return {
+            "status": "success",
+            "message": "Forced enum fix completed",
+            "specific_record_updated": result.rowcount,
+            "all_pending_updated": result2.rowcount,
+            "verification": {
+                "id": check_result[0] if check_result else None,
+                "status": check_result[1] if check_result else None
+            }
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {
+            "status": "error",
+            "message": f"Failed to force fix enum: {str(e)}"
+        }
+
+
 @app.get("/admin/check-enum-values")
 async def check_enum_values(db: Session = Depends(get_db)):
     """Check current enum values in database."""
