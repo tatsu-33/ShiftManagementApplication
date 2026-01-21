@@ -406,171 +406,198 @@ def generate_calendar_flex_message(
         
     Validates: Requirements 1.1, 1.2
     """
-    if current_date is None:
-        current_date = date.today()
+    import logging
+    logger = logging.getLogger(__name__)
     
-    # Calculate next month
-    next_month_date = current_date + relativedelta(months=1)
-    year = next_month_date.year
-    month = next_month_date.month
-    
-    # Get month name in Japanese
-    month_names_ja = [
-        "1月", "2月", "3月", "4月", "5月", "6月",
-        "7月", "8月", "9月", "10月", "11月", "12月"
-    ]
-    month_name = month_names_ja[month - 1]
-    
-    # Get existing requests for this user in the next month
-    request_service = RequestService(db)
-    auth_service = AuthService(db)
-    
-    # Get worker by LINE ID
-    worker = auth_service.get_worker_by_line_id(user_id)
-    existing_requests = []
-    if worker:
-        requests = request_service.get_requests_by_worker(worker.id)
-        # Filter for next month only
-        existing_requests = [
-            req.request_date for req in requests
-            if req.request_date.year == year and req.request_date.month == month
+    try:
+        logger.info(f"Starting calendar generation for user: {user_id}")
+        
+        if current_date is None:
+            current_date = date.today()
+        
+        logger.info(f"Current date: {current_date}")
+        
+        # Calculate next month
+        next_month_date = current_date + relativedelta(months=1)
+        year = next_month_date.year
+        month = next_month_date.month
+        
+        logger.info(f"Target month: {year}-{month}")
+        
+        # Get month name in Japanese
+        month_names_ja = [
+            "1月", "2月", "3月", "4月", "5月", "6月",
+            "7月", "8月", "9月", "10月", "11月", "12月"
         ]
-    
-    # Get calendar data
-    cal = calendar.monthcalendar(year, month)
-    
-    # Day of week headers
-    day_headers = ["月", "火", "水", "木", "金", "土", "日"]
-    
-    # Build calendar rows
-    calendar_rows = []
-    
-    # Header row with day names
-    header_contents = []
-    for day_name in day_headers:
-        header_contents.append({
-            "type": "text",
-            "text": day_name,
-            "size": "sm",
-            "color": "#999999",
-            "align": "center",
-            "flex": 1
-        })
-    
-    calendar_rows.append({
-        "type": "box",
-        "layout": "horizontal",
-        "contents": header_contents,
-        "spacing": "sm"
-    })
-    
-    # Date rows
-    for week in cal:
-        week_contents = []
-        for day in week:
-            if day == 0:
-                # Empty cell for days outside the month
-                week_contents.append({
-                    "type": "text",
-                    "text": " ",
-                    "size": "sm",
-                    "align": "center",
-                    "flex": 1
-                })
-            else:
-                day_date = date(year, month, day)
-                is_requested = day_date in existing_requests
-                
-                # Create button for each day
-                button_style = "primary" if not is_requested else "secondary"
-                button_color = "#17c950" if not is_requested else "#aaaaaa"
-                
-                if is_requested:
-                    # Disabled button for already requested dates
-                    week_contents.append({
-                        "type": "button",
-                        "action": {
-                            "type": "postback",
-                            "label": str(day),
-                            "data": f"action=request_disabled&date={day_date.isoformat()}",
-                            "displayText": f"{month_name}{day}日は既に申請済みです"
-                        },
-                        "style": button_style,
-                        "color": button_color,
-                        "height": "sm",
-                        "flex": 1
-                    })
-                else:
-                    # Active button for available dates
-                    week_contents.append({
-                        "type": "button",
-                        "action": {
-                            "type": "postback",
-                            "label": str(day),
-                            "data": f"action=request_date&date={day_date.isoformat()}",
-                            "displayText": f"{month_name}{day}日を申請します"
-                        },
-                        "style": button_style,
-                        "color": button_color,
-                        "height": "sm",
-                        "flex": 1
-                    })
+        month_name = month_names_ja[month - 1]
+        
+        logger.info(f"Month name: {month_name}")
+        
+        # Get existing requests for this user in the next month
+        request_service = RequestService(db)
+        auth_service = AuthService(db)
+        
+        logger.info(f"Getting worker by LINE ID: {user_id}")
+        # Get worker by LINE ID
+        worker = auth_service.get_worker_by_line_id(user_id)
+        existing_requests = []
+        if worker:
+            logger.info(f"Worker found: {worker.name} (ID: {worker.id})")
+            requests = request_service.get_requests_by_worker(worker.id)
+            logger.info(f"Found {len(requests)} total requests for worker")
+            # Filter for next month only
+            existing_requests = [
+                req.request_date for req in requests
+                if req.request_date.year == year and req.request_date.month == month
+            ]
+            logger.info(f"Found {len(existing_requests)} requests for target month: {existing_requests}")
+        else:
+            logger.warning(f"Worker not found for LINE ID: {user_id}")
+        
+        # Get calendar data
+        cal = calendar.monthcalendar(year, month)
+        logger.info(f"Calendar data: {cal}")
+        
+        # Day of week headers
+        day_headers = ["月", "火", "水", "木", "金", "土", "日"]
+        
+        # Build calendar rows
+        calendar_rows = []
+        
+        # Header row with day names
+        header_contents = []
+        for day_name in day_headers:
+            header_contents.append({
+                "type": "text",
+                "text": day_name,
+                "size": "sm",
+                "color": "#999999",
+                "align": "center",
+                "flex": 1
+            })
         
         calendar_rows.append({
             "type": "box",
             "layout": "horizontal",
-            "contents": week_contents,
-            "spacing": "sm",
-            "margin": "sm"
+            "contents": header_contents,
+            "spacing": "sm"
         })
-    
-    # Build the complete Flex Message
-    flex_message = {
-        "type": "bubble",
-        "header": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": f"{year}年{month_name}",
-                    "weight": "bold",
-                    "size": "xl",
-                    "color": "#ffffff"
-                },
-                {
-                    "type": "text",
-                    "text": "NG日を選択してください",
-                    "size": "sm",
-                    "color": "#ffffff",
-                    "margin": "sm"
-                }
-            ],
-            "backgroundColor": "#17c950"
-        },
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": calendar_rows,
-            "spacing": "md",
-            "paddingAll": "md"
-        },
-        "footer": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "緑: 選択可能 / 灰色: 申請済み",
-                    "size": "xs",
-                    "color": "#999999",
-                    "align": "center"
-                }
-            ]
+        
+        # Date rows
+        for week in cal:
+            week_contents = []
+            for day in week:
+                if day == 0:
+                    # Empty cell for days outside the month
+                    week_contents.append({
+                        "type": "text",
+                        "text": " ",
+                        "size": "sm",
+                        "align": "center",
+                        "flex": 1
+                    })
+                else:
+                    day_date = date(year, month, day)
+                    is_requested = day_date in existing_requests
+                    
+                    # Create button for each day
+                    button_style = "primary" if not is_requested else "secondary"
+                    button_color = "#17c950" if not is_requested else "#aaaaaa"
+                    
+                    if is_requested:
+                        # Disabled button for already requested dates
+                        week_contents.append({
+                            "type": "button",
+                            "action": {
+                                "type": "postback",
+                                "label": str(day),
+                                "data": f"action=request_disabled&date={day_date.isoformat()}",
+                                "displayText": f"{month_name}{day}日は既に申請済みです"
+                            },
+                            "style": button_style,
+                            "color": button_color,
+                            "height": "sm",
+                            "flex": 1
+                        })
+                    else:
+                        # Active button for available dates
+                        week_contents.append({
+                            "type": "button",
+                            "action": {
+                                "type": "postback",
+                                "label": str(day),
+                                "data": f"action=request_date&date={day_date.isoformat()}",
+                                "displayText": f"{month_name}{day}日を申請します"
+                            },
+                            "style": button_style,
+                            "color": button_color,
+                            "height": "sm",
+                            "flex": 1
+                        })
+            
+            calendar_rows.append({
+                "type": "box",
+                "layout": "horizontal",
+                "contents": week_contents,
+                "spacing": "sm",
+                "margin": "sm"
+            })
+        
+        # Build the complete Flex Message
+        flex_message = {
+            "type": "bubble",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": f"{year}年{month_name}",
+                        "weight": "bold",
+                        "size": "xl",
+                        "color": "#ffffff"
+                    },
+                    {
+                        "type": "text",
+                        "text": "NG日を選択してください",
+                        "size": "sm",
+                        "color": "#ffffff",
+                        "margin": "sm"
+                    }
+                ],
+                "backgroundColor": "#17c950"
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": calendar_rows,
+                "spacing": "md",
+                "paddingAll": "md"
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "緑: 選択可能 / 灰色: 申請済み",
+                        "size": "xs",
+                        "color": "#999999",
+                        "align": "center"
+                    }
+                ]
+            }
         }
-    }
-    
-    return flex_message
+        
+        logger.info(f"Calendar flex message generated successfully for user: {user_id}")
+        return flex_message
+        
+    except Exception as e:
+        logger.error(f"Error generating calendar for user {user_id}: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise
 
 
 def show_calendar(user_id: str, reply_token: str, db: Session) -> bool:
@@ -587,19 +614,29 @@ def show_calendar(user_id: str, reply_token: str, db: Session) -> bool:
         
     Validates: Requirements 1.1, 1.2
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
+        logger.info(f"Generating calendar for user: {user_id}")
         flex_message_content = generate_calendar_flex_message(user_id, db)
+        
+        logger.info(f"Calendar content generated successfully for user: {user_id}")
         
         flex_message = FlexSendMessage(
             alt_text="NG日申請カレンダー",
             contents=flex_message_content
         )
         
+        logger.info(f"Sending calendar message to user: {user_id}")
         line_bot_api.reply_message(reply_token, flex_message)
-        logger.info(f"Calendar sent to {user_id}")
+        logger.info(f"Calendar sent successfully to {user_id}")
         return True
     except Exception as e:
         logger.error(f"Error sending calendar to {user_id}: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return False
 
 
