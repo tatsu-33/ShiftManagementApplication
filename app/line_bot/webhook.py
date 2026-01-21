@@ -299,12 +299,16 @@ def handle_postback(event: PostbackEvent):
                 
             except ValidationError as e:
                 # Send user-friendly error message
+                logger.error(f"Validation error creating request: {str(e)}")
                 error_message = format_error_for_line(e)
                 reply_message = TextSendMessage(text=error_message)
                 line_bot_api.reply_message(event.reply_token, reply_message)
                 
             except Exception as e:
                 logger.error(f"Error creating request: {str(e)}")
+                logger.error(f"Error type: {type(e).__name__}")
+                logger.error(f"User ID: {user_id}")
+                logger.error(f"Request date: {date_str}")
                 reply_message = TextSendMessage(
                     text="申請の作成中にエラーが発生しました。\n"
                          "後でもう一度お試しください。"

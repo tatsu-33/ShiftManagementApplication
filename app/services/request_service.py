@@ -105,9 +105,14 @@ class RequestService:
             
         Validates: Requirements 1.3, 1.4, 1.5, 2.5
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         # Use today's date if current_date not provided
         if current_date is None:
             current_date = date.today()
+        
+        logger.info(f"Creating request: worker_id={worker_id}, request_date={request_date}, current_date={current_date}")
         
         # Validate worker_id
         if not worker_id:
@@ -120,16 +125,25 @@ class RequestService:
         # Check if worker exists
         worker = self.db.query(User).filter(User.id == worker_id).first()
         if not worker:
+            logger.error(f"Worker not found: {worker_id}")
             raise ResourceNotFoundError("worker", worker_id)
+        
+        logger.info(f"Worker found: {worker.name} (ID: {worker.id})")
         
         # Validate that request date is in the next month (Requirement 1.2)
         if not self._is_next_month(request_date, current_date):
+            logger.error(f"Request date not in next month: {request_date} vs {current_date}")
             raise NotNextMonthError(request_date, current_date)
         
         # Check if past deadline (Requirement 2.5, 2.6)
+        deadline_day = self._get_deadline_day()
+        logger.info(f"Current deadline day: {deadline_day}")
+        
         if self._is_past_deadline(current_date):
-            deadline_day = self._get_deadline_day()
+            logger.error(f"Past deadline: current_date.day={current_date.day} > deadline_day={deadline_day}")
             raise DeadlineExceededError(deadline_day, current_date)
+        
+        logger.info(f"Deadline check passed: current_date.day={current_date.day} <= deadline_day={deadline_day}")
         
         # Check for duplicate request (Requirement 1.4)
         existing_request = self.db.query(Request).filter(
@@ -138,6 +152,7 @@ class RequestService:
         ).first()
         
         if existing_request:
+            logger.error(f"Duplicate request found: worker={worker.name}, date={request_date}")
             raise DuplicateRequestError(worker.name, request_date)
         
         # Create new request with pending status (Requirement 1.3)
@@ -149,6 +164,8 @@ class RequestService:
             created_at=datetime.utcnow()
         )
         
+        logger.info(f"Created request object: {new_request.id}")
+        
         # Validate the request object
         new_request.validate()
         
@@ -157,7 +174,20 @@ class RequestService:
             self.db.add(new_request)
             self.db.commit()
             self.db.refresh(new_request)
+            logger.info(f"Request saved successfully: {new_request.id}")
         except IntegrityError as e:
+            self.db.rollback()
+            logger.error(f"IntegrityError saving request: {str(e)}")
+            # Handle unique constraint violation
+            if "uq_worker_request_date" in str(e):
+                raise DuplicateRequestError(worker.name, request_date)
+            raise
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Unexpected error saving request: {str(e)}")
+            raise
+        
+        return new_request
             self.db.rollback()
             # Handle unique constraint violation
             if "uq_worker_request_date" in str(e):

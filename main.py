@@ -69,20 +69,35 @@ async def ping():
     return {"ping": "pong"}
 
 
-@app.get("/test/line-config")
-async def test_line_config():
-    """Test LINE Bot configuration."""
-    from app.config import settings
+@app.get("/test/deadline-config")
+async def test_deadline_config(db: Session = Depends(get_db)):
+    """Test deadline configuration (no auth required)."""
+    from app.services.deadline_service import DeadlineService
     
-    return {
-        "status": "ok",
-        "line_config": {
-            "channel_access_token_set": bool(settings.line_channel_access_token),
-            "channel_secret_set": bool(settings.line_channel_secret),
-            "channel_access_token_length": len(settings.line_channel_access_token) if settings.line_channel_access_token else 0,
-            "channel_secret_length": len(settings.line_channel_secret) if settings.line_channel_secret else 0
+    try:
+        deadline_service = DeadlineService(db)
+        deadline_day = deadline_service.get_deadline_day()
+        
+        # Also check if there's a setting in the database
+        from app.models.settings import Settings
+        setting = db.query(Settings).filter(
+            Settings.key == "application_deadline_day"
+        ).first()
+        
+        return {
+            "status": "ok",
+            "deadline_config": {
+                "current_deadline_day": deadline_day,
+                "setting_exists": setting is not None,
+                "setting_value": setting.value if setting else None,
+                "setting_updated_at": setting.updated_at.isoformat() if setting else None
+            }
         }
-    }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
 
 
 @app.post("/webhook/line")
