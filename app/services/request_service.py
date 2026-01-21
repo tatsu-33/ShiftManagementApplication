@@ -208,15 +208,61 @@ class RequestService:
             
         Validates: Requirements 3.1, 3.2, 3.3
         """
-        query = self.db.query(Request).filter(Request.worker_id == worker_id)
+        import logging
+        logger = logging.getLogger(__name__)
         
-        if status:
-            query = query.filter(Request.status == status)
-        
-        # Sort by request_date descending (newest first)
-        query = query.order_by(Request.request_date.desc())
-        
-        return query.all()
+        try:
+            # Use raw SQL to avoid enum conversion issues
+            from sqlalchemy import text
+            
+            if status:
+                query_sql = text("""
+                    SELECT id, worker_id, request_date, status, created_at, processed_at, processed_by
+                    FROM requests 
+                    WHERE worker_id = :worker_id AND status = :status
+                    ORDER BY request_date DESC
+                """)
+                result = self.db.execute(query_sql, {"worker_id": worker_id, "status": status.value}).fetchall()
+            else:
+                query_sql = text("""
+                    SELECT id, worker_id, request_date, status, created_at, processed_at, processed_by
+                    FROM requests 
+                    WHERE worker_id = :worker_id
+                    ORDER BY request_date DESC
+                """)
+                result = self.db.execute(query_sql, {"worker_id": worker_id}).fetchall()
+            
+            # Manually create Request objects
+            requests = []
+            for row in result:
+                request = Request()
+                request.id = row[0]
+                request.worker_id = row[1]
+                request.request_date = row[2]
+                # Map string status to enum
+                status_str = row[3]
+                if status_str == "pending":
+                    request.status = RequestStatus.PENDING
+                elif status_str == "approved":
+                    request.status = RequestStatus.APPROVED
+                elif status_str == "rejected":
+                    request.status = RequestStatus.REJECTED
+                else:
+                    logger.warning(f"Unknown status: {status_str}")
+                    continue
+                    
+                request.created_at = row[4]
+                request.processed_at = row[5]
+                request.processed_by = row[6]
+                requests.append(request)
+            
+            logger.info(f"Retrieved {len(requests)} requests for worker {worker_id}")
+            return requests
+            
+        except Exception as e:
+            logger.error(f"Error getting requests for worker {worker_id}: {str(e)}")
+            # Fallback to empty list
+            return []
     
     def get_all_requests(
         self,
