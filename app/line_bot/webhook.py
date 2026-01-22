@@ -470,17 +470,19 @@ def generate_calendar_flex_message(
             header_contents.append({
                 "type": "text",
                 "text": day_name,
-                "size": "sm",
-                "color": "#999999",
+                "size": "md",
+                "color": "#666666",
                 "align": "center",
-                "flex": 1
+                "flex": 1,
+                "weight": "bold"
             })
         
         calendar_rows.append({
             "type": "box",
             "layout": "horizontal",
             "contents": header_contents,
-            "spacing": "sm"
+            "spacing": "xs",
+            "margin": "sm"
         })
         
         # Date rows
@@ -490,11 +492,8 @@ def generate_calendar_flex_message(
                 if day == 0:
                     # Empty cell for days outside the month
                     week_contents.append({
-                        "type": "text",
-                        "text": " ",
-                        "size": "sm",
-                        "align": "center",
-                        "flex": 1
+                        "type": "spacer",
+                        "size": "md"
                     })
                 else:
                     day_date = date(year, month, day)
@@ -516,8 +515,9 @@ def generate_calendar_flex_message(
                             },
                             "style": button_style,
                             "color": button_color,
-                            "height": "sm",
-                            "flex": 1
+                            "height": "md",
+                            "flex": 1,
+                            "margin": "xs"
                         })
                     else:
                         # Active button for available dates
@@ -531,16 +531,17 @@ def generate_calendar_flex_message(
                             },
                             "style": button_style,
                             "color": button_color,
-                            "height": "sm",
-                            "flex": 1
+                            "height": "md",
+                            "flex": 1,
+                            "margin": "xs"
                         })
             
             calendar_rows.append({
                 "type": "box",
                 "layout": "horizontal",
                 "contents": week_contents,
-                "spacing": "sm",
-                "margin": "sm"
+                "spacing": "xs",
+                "margin": "xs"
             })
         
         # Build the complete Flex Message
@@ -571,8 +572,8 @@ def generate_calendar_flex_message(
                 "type": "box",
                 "layout": "vertical",
                 "contents": calendar_rows,
-                "spacing": "md",
-                "paddingAll": "md"
+                "spacing": "sm",
+                "paddingAll": "lg"
             },
             "footer": {
                 "type": "box",
