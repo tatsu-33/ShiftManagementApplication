@@ -461,17 +461,27 @@ async def get_workers(
         
     Validates: Requirements 6.1, 7.1
     """
-    workers = db.query(User).filter(User.role == UserRole.WORKER).all()
+    print("DEBUG: get_workers called")
     
-    result = []
-    for worker in workers:
-        result.append({
-            "id": worker.id,
-            "name": worker.name,
-            "line_id": worker.line_id
-        })
-    
-    return JSONResponse(content=result)
+    try:
+        workers = db.query(User).filter(User.role == UserRole.WORKER).all()
+        print(f"DEBUG: Found {len(workers)} workers")
+        
+        result = []
+        for worker in workers:
+            result.append({
+                "id": worker.id,
+                "name": worker.name,
+                "line_id": worker.line_id
+            })
+        
+        print(f"DEBUG: Returning {len(result)} workers")
+        return JSONResponse(content=result)
+    except Exception as e:
+        print(f"DEBUG: Error in get_workers: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.get("/api/shifts")
@@ -495,10 +505,13 @@ async def get_shifts(
         
     Validates: Requirements 6.1, 6.2
     """
+    print(f"DEBUG: get_shifts called with year={year}, month={month}")
+    
     shift_service = ShiftService(db)
     
     try:
         shifts = shift_service.get_shifts_by_month(year, month)
+        print(f"DEBUG: Found {len(shifts)} shifts")
         
         # Format response with worker names
         result = []
@@ -512,9 +525,13 @@ async def get_shifts(
                 "updated_by": shift.updated_by
             })
         
+        print(f"DEBUG: Returning {len(result)} formatted shifts")
         return JSONResponse(content=result)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"DEBUG: Error in get_shifts: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.get("/api/ng-days")
@@ -538,19 +555,26 @@ async def get_ng_days(
         
     Validates: Requirements 6.2, 6.4
     """
+    print(f"DEBUG: get_ng_days called with year={year}, month={month}")
+    
     shift_service = ShiftService(db)
     
     try:
         ng_days = shift_service.get_approved_ng_days(year=year, month=month)
+        print(f"DEBUG: Found NG days for {len(ng_days)} dates")
         
         # Convert date keys to ISO format strings
         result = {}
         for date_key, worker_ids in ng_days.items():
             result[date_key.isoformat()] = worker_ids
         
+        print(f"DEBUG: Returning NG days result: {result}")
         return JSONResponse(content=result)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"DEBUG: Error in get_ng_days: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.put("/api/shifts/{shift_date}")
