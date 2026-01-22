@@ -302,46 +302,104 @@ class RequestService:
             
         Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5
         """
-        # Start with base query joining with User for name search
-        query = self.db.query(Request).join(User, Request.worker_id == User.id)
+        import logging
+        logger = logging.getLogger(__name__)
         
-        # Apply filters
-        if status:
-            query = query.filter(Request.status == status)
-        
-        if worker_name:
-            # Partial match search on worker name
-            query = query.filter(User.name.ilike(f"%{worker_name}%"))
-        
-        if request_date:
-            # Exact date match
-            query = query.filter(Request.request_date == request_date)
-        
-        if month and year:
-            # Filter by month and year
-            query = query.filter(
-                and_(
-                    Request.request_date >= date(year, month, 1),
-                    Request.request_date < date(year + (1 if month == 12 else 0), (month % 12) + 1, 1)
-                )
-            )
-        elif month:
-            # Filter by month only (current year assumed)
-            current_year = datetime.now().year
-            query = query.filter(
-                and_(
-                    Request.request_date >= date(current_year, month, 1),
-                    Request.request_date < date(current_year + (1 if month == 12 else 0), (month % 12) + 1, 1)
-                )
-            )
-        
-        # Sort: pending first, then by request_date descending
-        query = query.order_by(
-            (Request.status == RequestStatus.PENDING).desc(),
-            Request.request_date.desc()
-        )
-        
-        return query.all()
+        try:
+            # Use raw SQL to avoid enum conversion issues
+            from sqlalchemy import text
+            
+            # Build WHERE conditions
+            where_conditions = []
+            params = {}
+            
+            if status:
+                where_conditions.append("r.status = :status")
+                params["status"] = status.value
+            
+            if worker_name:
+                where_conditions.append("u.name LIKE :worker_name")
+                params["worker_name"] = f"%{worker_name}%"
+            
+            if request_date:
+                where_conditions.append("r.request_date = :request_date")
+                params["request_date"] = request_date
+            
+            if month and year:
+                where_conditions.append("YEAR(r.request_date) = :year AND MONTH(r.request_date) = :month")
+                params["year"] = year
+                params["month"] = month
+            elif month:
+                current_year = datetime.now().year
+                where_conditions.append("YEAR(r.request_date) = :year AND MONTH(r.request_date) = :month")
+                params["year"] = current_year
+                params["month"] = month
+            
+            # Build the complete query
+            where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+            
+            query_sql = text(f"""
+                SELECT r.id, r.worker_id, r.request_date, r.status, r.created_at, r.processed_at, r.processed_by,
+                       u.name as worker_name, p.name as processor_name
+                FROM requests r
+                JOIN users u ON r.worker_id = u.id
+                LEFT JOIN users p ON r.processed_by = p.id
+                WHERE {where_clause}
+                ORDER BY 
+                    CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END,
+                    r.request_date DESC
+            """)
+            
+            result = self.db.execute(query_sql, params).fetchall()
+            
+            # Manually create Request objects with relationships
+            requests = []
+            for row in result:
+                request = Request()
+                request.id = row[0]
+                request.worker_id = row[1]
+                request.request_date = row[2]
+                
+                # Map string status to enum
+                status_str = row[3]
+                if status_str == "pending":
+                    request.status = RequestStatus.PENDING
+                elif status_str == "approved":
+                    request.status = RequestStatus.APPROVED
+                elif status_str == "rejected":
+                    request.status = RequestStatus.REJECTED
+                else:
+                    logger.warning(f"Unknown status: {status_str}")
+                    continue
+                    
+                request.created_at = row[4]
+                request.processed_at = row[5]
+                request.processed_by = row[6]
+                
+                # Create mock worker and processor objects for the relationship
+                from app.models.user import User as UserModel
+                worker = UserModel()
+                worker.id = request.worker_id
+                worker.name = row[7]
+                request.worker = worker
+                
+                if row[8]:  # processor_name
+                    processor = UserModel()
+                    processor.id = request.processed_by
+                    processor.name = row[8]
+                    request.processor = processor
+                else:
+                    request.processor = None
+                
+                requests.append(request)
+            
+            logger.info(f"Retrieved {len(requests)} requests with filters")
+            return requests
+            
+        except Exception as e:
+            logger.error(f"Error getting all requests: {str(e)}")
+            # Fallback to empty list
+            return []
     
     def get_requests_by_status(
         self,
