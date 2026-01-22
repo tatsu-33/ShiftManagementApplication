@@ -79,6 +79,62 @@ async def ping():
     return {"ping": "pong"}
 
 
+@app.post("/admin/debug/init-db")
+async def debug_init_db():
+    """Debug endpoint to force database initialization."""
+    try:
+        from app.database import init_db
+        init_db()
+        return {
+            "status": "success",
+            "message": "Database initialized successfully"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Database initialization failed: {str(e)}"
+        }
+
+
+@app.get("/admin/debug/tables")
+async def debug_tables(db: Session = Depends(get_db)):
+    """Debug endpoint to check database tables."""
+    from sqlalchemy import text
+    
+    try:
+        # Check if shifts table exists
+        result = db.execute(text("SHOW TABLES")).fetchall()
+        tables = [row[0] for row in result]
+        
+        # Check shifts table structure if it exists
+        shifts_info = None
+        if 'shifts' in tables:
+            shifts_result = db.execute(text("DESCRIBE shifts")).fetchall()
+            shifts_info = [
+                {
+                    "field": row[0],
+                    "type": row[1],
+                    "null": row[2],
+                    "key": row[3],
+                    "default": row[4],
+                    "extra": row[5]
+                } for row in shifts_result
+            ]
+        
+        return {
+            "status": "ok",
+            "tables": tables,
+            "shifts_table_exists": 'shifts' in tables,
+            "shifts_table_structure": shifts_info
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to check tables: {str(e)}"
+        }
+
+
 @app.post("/webhook/line")
 async def line_webhook(
     request: Request,
