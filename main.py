@@ -53,8 +53,8 @@ async def shutdown_event():
 
 @app.get("/")
 async def root():
-    """Health check endpoint."""
-    return {"status": "ok", "message": "Shift Request Management System"}
+    """Redirect to admin login."""
+    return RedirectResponse(url="/admin/login", status_code=302)
 
 
 @app.get("/health")
@@ -302,10 +302,16 @@ async def line_webhook(
     return await handle_webhook(request, db, x_line_signature)
 
 
+@app.get("/test-template")
+async def test_template():
+    """Simple test endpoint without authentication"""
+    return HTMLResponse(content="<h1>Simple HTML Test - This should work</h1>")
+
+
 @app.get("/admin/users", response_class=HTMLResponse)
 async def users_page(
-    request: Request,
-    admin: User = Depends(get_current_admin)
+    request: Request
+    # admin: User = Depends(get_current_admin)  # 一時的に認証を無効化
 ):
     """
     Display admin users management page.
@@ -317,10 +323,19 @@ async def users_page(
     Returns:
         HTML users management page
     """
-    return templates.TemplateResponse(
-        "admin/users.html",
-        {"request": request, "admin": admin}
-    )
+    print(f"DEBUG: users_page called without auth")
+    print(f"DEBUG: Template directory: app/templates")
+    
+    try:
+        response = templates.TemplateResponse(
+            "admin/users.html",
+            {"request": request, "admin": None}
+        )
+        print("DEBUG: Template response created successfully")
+        return response
+    except Exception as e:
+        print(f"DEBUG: Template error: {e}")
+        return HTMLResponse(content=f"<h1>Template Error: {e}</h1>", status_code=500)
 
 
 @app.get("/admin/api/users")

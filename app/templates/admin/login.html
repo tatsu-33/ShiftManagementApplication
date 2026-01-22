@@ -1,24 +1,22 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理者ログイン - シフト申請管理システム</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+{% extends "base.html" %}
+{% set hide_header = true %}
+
+{% block title %}管理者ログイン - シフト申請管理システム{% endblock %}
+
+{% block extra_styles %}
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+        }
+        
+        .main-content {
+            padding: 0;
+            max-width: none;
+            margin: 0;
         }
         
         .login-container {
@@ -110,53 +108,52 @@
             color: #666;
             font-size: 12px;
         }
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <div class="login-header">
-            <h1>管理者ログイン</h1>
-            <p>シフト申請管理システム</p>
-        </div>
-        
-        {% if error %}
-        <div class="error-message">
-            {{ error }}
-        </div>
-        {% endif %}
-        
-        <form method="POST" action="/admin/login">
-            <div class="form-group">
-                <label for="username">ユーザー名</label>
-                <input 
-                    type="text" 
-                    id="username" 
-                    name="username" 
-                    required 
-                    autofocus
-                    autocomplete="username"
-                >
-            </div>
-            
-            <div class="form-group">
-                <label for="password">パスワード</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    required
-                    autocomplete="current-password"
-                >
-            </div>
-            
-            <button type="submit" class="login-button">
-                ログイン
-            </button>
-        </form>
-        
-        <div class="login-footer">
-            &copy; 2024 Shift Request Management System
-        </div>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-header">
+        <h1>管理者ログイン</h1>
+        <p>シフト申請管理システム</p>
     </div>
-</body>
-</html>
+    
+    {% if error %}
+    <div class="error-message">
+        {{ error }}
+    </div>
+    {% endif %}
+    
+    <form method="POST" action="/admin/login">
+        <div class="form-group">
+            <label for="username">ユーザー名</label>
+            <input 
+                type="text" 
+                id="username" 
+                name="username" 
+                required 
+                autofocus
+                autocomplete="username"
+            >
+        </div>
+        
+        <div class="form-group">
+            <label for="password">パスワード</label>
+            <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                required
+                autocomplete="current-password"
+            >
+        </div>
+        
+        <button type="submit" class="login-button">
+            ログイン
+        </button>
+    </form>
+    
+    <div class="login-footer">
+        &copy; 2024 Shift Request Management System
+    </div>
+</div>
+{% endblock %}
