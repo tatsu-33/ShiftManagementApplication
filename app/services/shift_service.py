@@ -120,55 +120,84 @@ class ShiftService:
             
         Validates: Requirements 6.2, 6.4
         """
-        # Build query for approved requests
-        query = self.db.query(Request).filter(
-            Request.status == RequestStatus.APPROVED
-        )
+        from sqlalchemy import text
         
-        # Apply filters
-        if year and month:
-            # Validate month
-            if not 1 <= month <= 12:
-                raise ValueError(f"Month must be between 1 and 12, got {month}")
+        try:
+            # Build SQL query for approved requests using raw SQL to avoid enum issues
+            if year and month:
+                # Validate month
+                if not 1 <= month <= 12:
+                    raise ValueError(f"Month must be between 1 and 12, got {month}")
+                
+                # Filter by month using raw SQL
+                first_day = date(year, month, 1)
+                last_day_num = monthrange(year, month)[1]
+                last_day = date(year, month, last_day_num)
+                
+                query = text("""
+                    SELECT request_date, worker_id 
+                    FROM requests 
+                    WHERE status = 'approved' 
+                    AND request_date >= :start_date 
+                    AND request_date <= :end_date
+                    ORDER BY request_date
+                """)
+                
+                result = self.db.execute(query, {
+                    'start_date': first_day,
+                    'end_date': last_day
+                }).fetchall()
+                
+            elif start_date and end_date:
+                # Validate date range
+                if start_date > end_date:
+                    raise ValueError(
+                        f"Start date ({start_date}) must be before or equal to end date ({end_date})"
+                    )
+                
+                # Filter by date range using raw SQL
+                query = text("""
+                    SELECT request_date, worker_id 
+                    FROM requests 
+                    WHERE status = 'approved' 
+                    AND request_date >= :start_date 
+                    AND request_date <= :end_date
+                    ORDER BY request_date
+                """)
+                
+                result = self.db.execute(query, {
+                    'start_date': start_date,
+                    'end_date': end_date
+                }).fetchall()
+                
+            else:
+                # No filters - get all approved requests
+                query = text("""
+                    SELECT request_date, worker_id 
+                    FROM requests 
+                    WHERE status = 'approved'
+                    ORDER BY request_date
+                """)
+                
+                result = self.db.execute(query).fetchall()
             
-            # Filter by month
-            first_day = date(year, month, 1)
-            last_day_num = monthrange(year, month)[1]
-            last_day = date(year, month, last_day_num)
+            # Group by date
+            ng_days_by_date: Dict[date, List[str]] = {}
+            for row in result:
+                request_date = row[0]
+                worker_id = row[1]
+                
+                if request_date not in ng_days_by_date:
+                    ng_days_by_date[request_date] = []
+                ng_days_by_date[request_date].append(worker_id)
             
-            query = query.filter(
-                and_(
-                    Request.request_date >= first_day,
-                    Request.request_date <= last_day
-                )
-            )
-        elif start_date and end_date:
-            # Validate date range
-            if start_date > end_date:
-                raise ValueError(
-                    f"Start date ({start_date}) must be before or equal to end date ({end_date})"
-                )
+            return ng_days_by_date
             
-            # Filter by date range
-            query = query.filter(
-                and_(
-                    Request.request_date >= start_date,
-                    Request.request_date <= end_date
-                )
-            )
-        
-        # Execute query
-        approved_requests = query.all()
-        
-        # Group by date
-        ng_days_by_date: Dict[date, List[str]] = {}
-        for request in approved_requests:
-            request_date = request.request_date
-            if request_date not in ng_days_by_date:
-                ng_days_by_date[request_date] = []
-            ng_days_by_date[request_date].append(request.worker_id)
-        
-        return ng_days_by_date
+        except Exception as e:
+            print(f"ERROR in get_approved_ng_days: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
     
     def update_shift(
         self,
