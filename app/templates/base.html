@@ -178,16 +178,14 @@
             color: #2a4365;
             border: 1px solid #90cdf4;
         }
-        
-        {% block extra_styles %}{% endblock %}
     </style>
+    {% block extra_styles %}{% endblock %}
 </head>
 <body>
     {% if not hide_header %}
-    <!-- DEBUG: Header is being rendered -->
     <header class="header">
         <div class="header-top">
-            <h1>シフト申請管理システム (統一ヘッダー)</h1>
+            <h1>シフト申請管理システム</h1>
             <div class="header-right">
                 <span class="user-info">管理者さん</span>
                 <form action="/admin/logout" method="post" style="display: inline;">
@@ -203,8 +201,6 @@
             <a href="/admin/settings" class="{% if request.url.path == '/admin/settings' %}active{% endif %}">設定</a>
         </nav>
     </header>
-    {% else %}
-    <!-- DEBUG: Header is hidden -->
     {% endif %}
     
     <main class="main-content">
