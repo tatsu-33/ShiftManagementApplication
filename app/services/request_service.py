@@ -442,39 +442,79 @@ class RequestService:
             
         Validates: Requirements 5.1, 5.3, 5.5
         """
-        # Validate admin exists
-        admin = self.db.query(User).filter(User.id == admin_id).first()
-        if not admin:
-            raise ResourceNotFoundError("admin", admin_id)
+        import logging
+        logger = logging.getLogger(__name__)
         
-        # Get the request
-        request = self.db.query(Request).filter(Request.id == request_id).first()
-        if not request:
-            raise ResourceNotFoundError("request", request_id)
-        
-        # Check if already processed (Requirement 5.5)
-        if request.status != RequestStatus.PENDING:
-            raise InvalidStatusTransitionError(request.status.value, "approve")
-        
-        # Update status to approved (Requirement 5.1)
-        request.status = RequestStatus.APPROVED
-        
-        # Record processing information (Requirement 5.3)
-        request.processed_at = datetime.utcnow()
-        request.processed_by = admin_id
-        
-        # Validate the updated request
-        request.validate()
-        
-        # Save to database
         try:
+            # Use raw SQL to avoid enum conversion issues
+            from sqlalchemy import text
+            
+            # Validate admin exists
+            admin_check = self.db.execute(text("""
+                SELECT id FROM users WHERE id = :admin_id AND role = 'ADMIN'
+            """), {"admin_id": admin_id}).fetchone()
+            
+            if not admin_check:
+                raise ResourceNotFoundError("admin", admin_id)
+            
+            # Get the request and check status
+            request_check = self.db.execute(text("""
+                SELECT id, status FROM requests WHERE id = :request_id
+            """), {"request_id": request_id}).fetchone()
+            
+            if not request_check:
+                raise ResourceNotFoundError("request", request_id)
+            
+            # Check if already processed (Requirement 5.5)
+            if request_check[1] != "pending":
+                raise InvalidStatusTransitionError(request_check[1], "approve")
+            
+            # Update status to approved (Requirement 5.1)
+            update_result = self.db.execute(text("""
+                UPDATE requests 
+                SET status = 'approved', processed_at = :processed_at, processed_by = :processed_by
+                WHERE id = :request_id
+            """), {
+                "request_id": request_id,
+                "processed_at": datetime.utcnow(),
+                "processed_by": admin_id
+            })
+            
             self.db.commit()
-            self.db.refresh(request)
+            
+            # Get the updated request
+            updated_request = self.db.execute(text("""
+                SELECT r.id, r.worker_id, r.request_date, r.status, r.created_at, r.processed_at, r.processed_by,
+                       u.name as worker_name
+                FROM requests r
+                JOIN users u ON r.worker_id = u.id
+                WHERE r.id = :request_id
+            """), {"request_id": request_id}).fetchone()
+            
+            # Create Request object
+            request = Request()
+            request.id = updated_request[0]
+            request.worker_id = updated_request[1]
+            request.request_date = updated_request[2]
+            request.status = RequestStatus.APPROVED
+            request.created_at = updated_request[4]
+            request.processed_at = updated_request[5]
+            request.processed_by = updated_request[6]
+            
+            # Create mock worker object
+            from app.models.user import User as UserModel
+            worker = UserModel()
+            worker.id = request.worker_id
+            worker.name = updated_request[7]
+            request.worker = worker
+            
+            logger.info(f"Request {request_id} approved successfully")
+            return request
+            
         except Exception as e:
             self.db.rollback()
+            logger.error(f"Error approving request {request_id}: {str(e)}")
             raise
-        
-        return request
     
     def reject_request(
         self,
@@ -497,36 +537,78 @@ class RequestService:
             
         Validates: Requirements 5.2, 5.3, 5.5
         """
-        # Validate admin exists
-        admin = self.db.query(User).filter(User.id == admin_id).first()
-        if not admin:
-            raise ResourceNotFoundError("admin", admin_id)
+        import logging
+        logger = logging.getLogger(__name__)
         
-        # Get the request
-        request = self.db.query(Request).filter(Request.id == request_id).first()
-        if not request:
-            raise ResourceNotFoundError("request", request_id)
-        
-        # Check if already processed (Requirement 5.5)
-        if request.status != RequestStatus.PENDING:
-            raise InvalidStatusTransitionError(request.status.value, "reject")
-        
-        # Update status to rejected (Requirement 5.2)
-        request.status = RequestStatus.REJECTED
-        
-        # Record processing information (Requirement 5.3)
-        request.processed_at = datetime.utcnow()
-        request.processed_by = admin_id
-        
-        # Validate the updated request
-        request.validate()
-        
-        # Save to database
         try:
+            # Use raw SQL to avoid enum conversion issues
+            from sqlalchemy import text
+            
+            # Validate admin exists
+            admin_check = self.db.execute(text("""
+                SELECT id FROM users WHERE id = :admin_id AND role = 'ADMIN'
+            """), {"admin_id": admin_id}).fetchone()
+            
+            if not admin_check:
+                raise ResourceNotFoundError("admin", admin_id)
+            
+            # Get the request and check status
+            request_check = self.db.execute(text("""
+                SELECT id, status FROM requests WHERE id = :request_id
+            """), {"request_id": request_id}).fetchone()
+            
+            if not request_check:
+                raise ResourceNotFoundError("request", request_id)
+            
+            # Check if already processed (Requirement 5.5)
+            if request_check[1] != "pending":
+                raise InvalidStatusTransitionError(request_check[1], "reject")
+            
+            # Update status to rejected (Requirement 5.2)
+            update_result = self.db.execute(text("""
+                UPDATE requests 
+                SET status = 'rejected', processed_at = :processed_at, processed_by = :processed_by
+                WHERE id = :request_id
+            """), {
+                "request_id": request_id,
+                "processed_at": datetime.utcnow(),
+                "processed_by": admin_id
+            })
+            
             self.db.commit()
-            self.db.refresh(request)
+            
+            # Get the updated request
+            updated_request = self.db.execute(text("""
+                SELECT r.id, r.worker_id, r.request_date, r.status, r.created_at, r.processed_at, r.processed_by,
+                       u.name as worker_name
+                FROM requests r
+                JOIN users u ON r.worker_id = u.id
+                WHERE r.id = :request_id
+            """), {"request_id": request_id}).fetchone()
+            
+            # Create Request object
+            request = Request()
+            request.id = updated_request[0]
+            request.worker_id = updated_request[1]
+            request.request_date = updated_request[2]
+            request.status = RequestStatus.REJECTED
+            request.created_at = updated_request[4]
+            request.processed_at = updated_request[5]
+            request.processed_by = updated_request[6]
+            
+            # Create mock worker object
+            from app.models.user import User as UserModel
+            worker = UserModel()
+            worker.id = request.worker_id
+            worker.name = updated_request[7]
+            request.worker = worker
+            
+            logger.info(f"Request {request_id} rejected successfully")
+            return request
+            
         except Exception as e:
             self.db.rollback()
+            logger.error(f"Error rejecting request {request_id}: {str(e)}")
             raise
         
         return request
