@@ -486,15 +486,19 @@ def generate_calendar_flex_message(
         })
         
         # Date rows
-        for week in cal:
+        for week_index, week in enumerate(cal):
             week_contents = []
+            logger.info(f"Processing week {week_index}: {week}")
             for day in week:
                 if day == 0:
-                    # Empty cell for days outside the month
+                    # Empty cell for days outside the month - use empty box instead of spacer
                     week_contents.append({
-                        "type": "spacer",
-                        "size": "md"
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [],
+                        "flex": 1
                     })
+                    logger.info(f"Added empty cell for day 0")
                 else:
                     day_date = date(year, month, day)
                     is_requested = day_date in existing_requests
@@ -502,6 +506,8 @@ def generate_calendar_flex_message(
                     # Create button for each day
                     button_style = "primary" if not is_requested else "secondary"
                     button_color = "#17c950" if not is_requested else "#aaaaaa"
+                    
+                    logger.info(f"Processing day {day}, requested: {is_requested}")
                     
                     if is_requested:
                         # Disabled button for already requested dates
@@ -535,6 +541,8 @@ def generate_calendar_flex_message(
                             "flex": 1,
                             "margin": "xs"
                         })
+            
+            logger.info(f"Week {week_index} contents count: {len(week_contents)}")
             
             calendar_rows.append({
                 "type": "box",
@@ -591,6 +599,18 @@ def generate_calendar_flex_message(
         }
         
         logger.info(f"Calendar flex message generated successfully for user: {user_id}")
+        logger.info(f"Calendar rows count: {len(calendar_rows)}")
+        
+        # Validate the structure before returning
+        for i, row in enumerate(calendar_rows):
+            if 'contents' in row and row['contents']:
+                logger.info(f"Row {i} has {len(row['contents'])} contents")
+                for j, content in enumerate(row['contents']):
+                    if content is None:
+                        logger.error(f"Found null content at row {i}, position {j}")
+            else:
+                logger.info(f"Row {i} has no contents or empty contents")
+        
         return flex_message
         
     except Exception as e:
