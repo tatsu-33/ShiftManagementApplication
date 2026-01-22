@@ -171,10 +171,25 @@ class RequestService:
         
         # Save to database (Requirement 1.5)
         try:
-            self.db.add(new_request)
+            # Use raw SQL to avoid enum conversion issues
+            from sqlalchemy import text
+            
+            insert_sql = text("""
+                INSERT INTO requests (id, worker_id, request_date, status, created_at)
+                VALUES (:id, :worker_id, :request_date, :status, :created_at)
+            """)
+            
+            self.db.execute(insert_sql, {
+                "id": new_request.id,
+                "worker_id": new_request.worker_id,
+                "request_date": new_request.request_date,
+                "status": new_request.status.value,  # Use the string value
+                "created_at": new_request.created_at
+            })
+            
             self.db.commit()
-            self.db.refresh(new_request)
-            logger.info(f"Request saved successfully: {new_request.id}")
+            logger.info(f"Request saved successfully using raw SQL: {new_request.id}")
+            
         except IntegrityError as e:
             self.db.rollback()
             logger.error(f"IntegrityError saving request: {str(e)}")
