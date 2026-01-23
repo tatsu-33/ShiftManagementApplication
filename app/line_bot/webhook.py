@@ -495,8 +495,7 @@ def generate_calendar_flex_message(
                         "type": "box",
                         "layout": "vertical",
                         "contents": [],
-                        "flex": 1,
-                        "height": "md"
+                        "flex": 1
                     })
                     logger.info(f"Added empty cell for day 0")
                 else:
