@@ -470,7 +470,7 @@ def generate_calendar_flex_message(
             header_contents.append({
                 "type": "text",
                 "text": day_name,
-                "size": "md",
+                "size": "sm",
                 "color": "#666666",
                 "align": "center",
                 "flex": 1,
@@ -481,8 +481,7 @@ def generate_calendar_flex_message(
             "type": "box",
             "layout": "horizontal",
             "contents": header_contents,
-            "spacing": "xs",
-            "margin": "sm"
+            "spacing": "none"
         })
         
         # Date rows
@@ -491,12 +490,13 @@ def generate_calendar_flex_message(
             logger.info(f"Processing week {week_index}: {week}")
             for day in week:
                 if day == 0:
-                    # Empty cell for days outside the month - use empty box instead of spacer
+                    # Empty cell for days outside the month - use minimal empty box
                     week_contents.append({
                         "type": "box",
                         "layout": "vertical",
                         "contents": [],
-                        "flex": 1
+                        "flex": 1,
+                        "height": "md"
                     })
                     logger.info(f"Added empty cell for day 0")
                 else:
@@ -519,11 +519,10 @@ def generate_calendar_flex_message(
                                 "data": f"action=request_disabled&date={day_date.isoformat()}",
                                 "displayText": f"{month_name}{day}日は既に申請済みです"
                             },
-                            "style": button_style,
-                            "color": button_color,
+                            "style": "secondary",
+                            "color": "#cccccc",
                             "height": "md",
-                            "flex": 1,
-                            "margin": "xs"
+                            "flex": 1
                         })
                     else:
                         # Active button for available dates
@@ -535,11 +534,10 @@ def generate_calendar_flex_message(
                                 "data": f"action=request_date&date={day_date.isoformat()}",
                                 "displayText": f"{month_name}{day}日を申請します"
                             },
-                            "style": button_style,
-                            "color": button_color,
+                            "style": "primary",
+                            "color": "#06c755",
                             "height": "md",
-                            "flex": 1,
-                            "margin": "xs"
+                            "flex": 1
                         })
             
             logger.info(f"Week {week_index} contents count: {len(week_contents)}")
@@ -548,8 +546,7 @@ def generate_calendar_flex_message(
                 "type": "box",
                 "layout": "horizontal",
                 "contents": week_contents,
-                "spacing": "xs",
-                "margin": "xs"
+                "spacing": "none"
             })
         
         # Build the complete Flex Message
@@ -580,8 +577,8 @@ def generate_calendar_flex_message(
                 "type": "box",
                 "layout": "vertical",
                 "contents": calendar_rows,
-                "spacing": "sm",
-                "paddingAll": "lg"
+                "spacing": "xs",
+                "paddingAll": "md"
             },
             "footer": {
                 "type": "box",
