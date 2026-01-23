@@ -481,7 +481,7 @@ def generate_calendar_flex_message(
             "type": "box",
             "layout": "horizontal",
             "contents": header_contents,
-            "spacing": "none"
+            "spacing": "xs"
         })
         
         # Date rows
@@ -545,7 +545,7 @@ def generate_calendar_flex_message(
                 "type": "box",
                 "layout": "horizontal",
                 "contents": week_contents,
-                "spacing": "none"
+                "spacing": "xs"
             })
         
         # Build the complete Flex Message
@@ -576,8 +576,8 @@ def generate_calendar_flex_message(
                 "type": "box",
                 "layout": "vertical",
                 "contents": calendar_rows,
-                "spacing": "xs",
-                "paddingAll": "md"
+                "spacing": "sm",
+                "paddingAll": "sm"
             },
             "footer": {
                 "type": "box",
