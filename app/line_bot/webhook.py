@@ -490,12 +490,13 @@ def generate_calendar_flex_message(
             logger.info(f"Processing week {week_index}: {week}")
             for day in week:
                 if day == 0:
-                    # Empty cell for days outside the month - use minimal empty box
+                    # Empty cell for days outside the month - use fixed width empty box
                     week_contents.append({
                         "type": "box",
                         "layout": "vertical",
                         "contents": [],
-                        "flex": 1
+                        "flex": 1,
+                        "width": "40px"
                     })
                     logger.info(f"Added empty cell for day 0")
                 else:
@@ -527,6 +528,7 @@ def generate_calendar_flex_message(
                             "cornerRadius": "4px",
                             "paddingAll": "md",
                             "flex": 1,
+                            "width": "40px",
                             "action": {
                                 "type": "postback",
                                 "data": f"action=request_disabled&date={day_date.isoformat()}",
@@ -552,6 +554,7 @@ def generate_calendar_flex_message(
                             "cornerRadius": "4px",
                             "paddingAll": "md",
                             "flex": 1,
+                            "width": "40px",
                             "action": {
                                 "type": "postback",
                                 "data": f"action=request_date&date={day_date.isoformat()}",
