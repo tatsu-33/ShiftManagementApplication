@@ -509,34 +509,54 @@ def generate_calendar_flex_message(
                     logger.info(f"Processing day {day}, requested: {is_requested}")
                     
                     if is_requested:
-                        # Disabled button for already requested dates
+                        # Disabled cell for already requested dates - use box with text
                         week_contents.append({
-                            "type": "button",
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": str(day),
+                                    "size": "lg",
+                                    "color": "#999999",
+                                    "align": "center",
+                                    "weight": "bold"
+                                }
+                            ],
+                            "backgroundColor": "#f0f0f0",
+                            "cornerRadius": "4px",
+                            "paddingAll": "md",
+                            "flex": 1,
                             "action": {
                                 "type": "postback",
-                                "label": str(day),
                                 "data": f"action=request_disabled&date={day_date.isoformat()}",
                                 "displayText": f"{month_name}{day}日は既に申請済みです"
-                            },
-                            "style": "secondary",
-                            "color": "#cccccc",
-                            "height": "md",
-                            "flex": 1
+                            }
                         })
                     else:
-                        # Active button for available dates
+                        # Active cell for available dates - use box with text
                         week_contents.append({
-                            "type": "button",
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": str(day),
+                                    "size": "lg",
+                                    "color": "#ffffff",
+                                    "align": "center",
+                                    "weight": "bold"
+                                }
+                            ],
+                            "backgroundColor": "#06c755",
+                            "cornerRadius": "4px",
+                            "paddingAll": "md",
+                            "flex": 1,
                             "action": {
                                 "type": "postback",
-                                "label": str(day),
                                 "data": f"action=request_date&date={day_date.isoformat()}",
                                 "displayText": f"{month_name}{day}日を申請します"
-                            },
-                            "style": "primary",
-                            "color": "#06c755",
-                            "height": "md",
-                            "flex": 1
+                            }
                         })
             
             logger.info(f"Week {week_index} contents count: {len(week_contents)}")
